@@ -3,6 +3,7 @@
 #include "patch.h"
 #include "netmemoryaccess.h"
 #include "network.h"
+#include "spmhttp.h"
 
 #include <spm/fontmgr.h>
 #include <spm/seqdrv.h>
@@ -46,14 +47,21 @@ static void titleScreenCustomTextPatch()
     General mod functions
 */
 
+void webhookShenanigans()
+{
+  HTTPResponse_t myHttpResponse;
+  HTTPStatus_t mystatus = HTTPGet("google.com", 80, "/", &myHttpResponse);
+  wii::os::OSReport("%d\n", mystatus);
+}
+
 void main()
 {
     wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
-    
+
     wii::os::OSReport("Initializing NetMemoryAccess\n");
     NetMemoryAccess::init();
     wii::os::OSReport("Initialized.\n");
-
+    webhookShenanigans();
     titleScreenCustomTextPatch();
 }
 
