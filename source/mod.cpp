@@ -4,6 +4,7 @@
 #include "netmemoryaccess.h"
 #include "network.h"
 #include "spmhttp.h"
+#include "chainloader.h"
 
 #include <spm/fontmgr.h>
 #include <spm/seqdrv.h>
@@ -62,7 +63,9 @@ void main()
     NetMemoryAccess::init();
     wii::os::OSReport("Initialized.\n");
     webhookShenanigans();
-    titleScreenCustomTextPatch();
+    //titleScreenCustomTextPatch();
+
+    tryChainload();
 }
 
 }
