@@ -5,12 +5,21 @@
 #include "network.h"
 #include "spmhttp.h"
 #include "chainloader.h"
+#include "cutscene_helpers.h"
+#include "evt_cmd.h"
+#include "evtpatch.h"
+#include "exception.h"
 
+#include <spm/evt_seq.h>
+#include <spm/evtmgr.h>
+#include <spm/map_data.h>
 #include <spm/fontmgr.h>
 #include <spm/seqdrv.h>
 #include <spm/seqdef.h>
 #include <spm/spmario.h>
 #include <wii/os/OSError.h>
+#include <wii/ipc.h>
+#include <wii/os.h>
 #include <msl/stdio.h>
 
 namespace mod {
@@ -48,28 +57,51 @@ static void titleScreenCustomTextPatch()
     General mod functions
 */
 
+spm::evtmgr::EvtScriptCode* getInstructionEvtArg(spm::evtmgr::EvtScriptCode* script, s32 line, int instruction)
+{
+  spm::evtmgr::EvtScriptCode* link = evtpatch::getEvtInstruction(script, line);
+  wii::os::OSReport("%x\n", link);
+  spm::evtmgr::EvtScriptCode* arg = evtpatch::getInstructionArgv(link)[instruction];
+  wii::os::OSReport("%x\n", arg);
+  return arg;
+}
+
 void webhookShenanigans()
 {
+  wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
   HTTPResponse_t myHttpResponse;
   HTTPStatus_t mystatus = HTTPGet("google.com", 80, "/", &myHttpResponse);
   wii::os::OSReport("%d\n", mystatus);
 }
 
-/*s32 startWebhook(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+s32 startWebhook(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   webhookShenanigans();
   return 2;
 }
 
 EVT_DECLARE_USER_FUNC(startWebhook, 0)
-*/
+
+EVT_BEGIN(connectToServer)
+//USER_FUNC(spm::evt_seq::evt_seq_set_seq, spm::seqdrv::SEQ_MAPCHANGE, PTR("mac_05"), PTR("elv1"))
+  USER_FUNC(startWebhook)
+RETURN_FROM_CALL()
+
+void patchScripts()
+{
+  spm::map_data::MapData * an1_01_md = spm::map_data::mapDataPtr("aa1_01");
+  spm::evtmgr::EvtScriptCode* transition_evt = getInstructionEvtArg(an1_01_md->initScript, 60, 0);
+  evtpatch::hookEvt(transition_evt, 10, (spm::evtmgr::EvtScriptCode*)connectToServer);
+}
+
 void main()
 {
     wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
 
+    evtpatch::evtmgrExtensionInit(); // Initialize EVT scripting extension
     NetMemoryAccess::init();
     webhookShenanigans();
     titleScreenCustomTextPatch();
-
+    patchScripts();
     //tryChainload();
 }
 
