@@ -27,7 +27,7 @@ void init() {
     wii::os::OSResumeThread(&thread);
 }
 
-s32 initializeNetwork() {    
+s32 initializeNetwork() {
     s32 i, res;
     for (i = 0; i < MAX_INIT_RETRIES; i++) {
         res = Mynet_init();
@@ -53,11 +53,11 @@ void receiverLoop(u32 param) {
         return;
     }
     else {
-        wii::os::OSReport("Network initialized successfully.");
+        wii::os::OSReport("Network initialized successfully.\n");
     }
 
     mod::initCommands();
-    
+
     int listenfd = 0, connfd = 0;
     struct sockaddr_in serv_addr;
     u32 addrlen = sizeof(serv_addr);
@@ -74,7 +74,7 @@ void receiverLoop(u32 param) {
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(PORT); 
+    serv_addr.sin_port = htons(PORT);
 
     if (Mynet_bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr))) {
         Mynet_close(listenfd);
@@ -95,7 +95,7 @@ void receiverLoop(u32 param) {
             wii::os::OSYieldThread();
             connfd = Mynet_accept(listenfd, (struct sockaddr*)&serv_addr, &addrlen);
         } while (connfd < 0);
-        
+
         int bytes = 0;
         int totalReceived = 0;
         do {
@@ -112,7 +112,7 @@ void receiverLoop(u32 param) {
             wii::os::OSYieldThread();
             continue;
         }
-    
+
         auto commandManager = mod::CommandManager::Instance();
         size = commandManager->parseAndExecute((const char*)recvBuff, sendBuff, BUFSIZE);
 
