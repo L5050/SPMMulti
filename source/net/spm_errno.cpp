@@ -2,5 +2,5 @@
 #include <msl/errno.h>
 
 s32* __errno() {
-    return &msl::errno::spm_errno;
+    return &msl::errno::errno;
 }
