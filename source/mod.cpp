@@ -9,6 +9,8 @@
 #include "evt_cmd.h"
 #include "evtpatch.h"
 #include "exception.h"
+#include "evtdebug.h"
+#include "romfontexpand.h"
 
 #include <spm/evt_seq.h>
 #include <spm/evtmgr.h>
@@ -23,6 +25,7 @@
 #include <msl/stdio.h>
 
 namespace mod {
+bool gIsDolphin;
 bool tfirstRun = false;
 /*
     Title Screen Custom Text
@@ -53,6 +56,23 @@ static void titleScreenCustomTextPatch()
     spm::seqdef::seq_data[spm::seqdrv::SEQ_TITLE].main = &seq_titleMainOverride;
 }
 
+static void checkForDolphin()
+{
+    // Thanks to TheLordScruffy for telling me about this
+    gIsDolphin = wii::ipc::IOS_Open("/sys", 1) == -106;
+
+    // If they ever fix that, it'll be in a version that's definitely new enough to have /dev/dolphin
+    if (!gIsDolphin)
+    {
+        int ret = wii::ipc::IOS_Open("/dev/dolphin", 0);
+        if (ret >= 0)
+        {
+            gIsDolphin = true;
+            wii::ipc::IOS_Close(ret);
+        }
+    }
+}
+
 /*
     General mod functions
 */
@@ -69,8 +89,8 @@ spm::evtmgr::EvtScriptCode* getInstructionEvtArg(spm::evtmgr::EvtScriptCode* scr
 void webhookShenanigans()
 {
   wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
-  HTTPResponse_t myHttpResponse;
-  HTTPStatus_t mystatus = HTTPGet("google.com", 80, "/", &myHttpResponse);
+  HTTPResponse_t* myHttpResponse;
+  HTTPStatus_t mystatus = HTTPGet("34.173.153.191", 80, "/", myHttpResponse);
   wii::os::OSReport("%d\n", mystatus);
 }
 
@@ -96,10 +116,13 @@ void patchScripts()
 void main()
 {
     wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
-
+    checkForDolphin();
+    romfontExpand();
+    exceptionPatch(); // Seeky's exception handler from Practice Codes
+    evtDebugPatch();
     evtpatch::evtmgrExtensionInit(); // Initialize EVT scripting extension
     NetMemoryAccess::init();
-    webhookShenanigans();
+    //webhookShenanigans();
     titleScreenCustomTextPatch();
     patchScripts();
     //tryChainload();
