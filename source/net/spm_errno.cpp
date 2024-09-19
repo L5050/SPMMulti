@@ -1,4 +1,4 @@
-#include "spm_errno.h"
+#include "errno.h"
 
 s32* __errno() {
     return &spm_errno;
