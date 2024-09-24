@@ -89,8 +89,8 @@ spm::evtmgr::EvtScriptCode* getInstructionEvtArg(spm::evtmgr::EvtScriptCode* scr
 void webhookShenanigans()
 {
   wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
-  HTTPResponse_t* myHttpResponse;
-  HTTPStatus_t mystatus = HTTPGet("34.173.153.191", 80, "/", myHttpResponse);
+  HTTPResponse_t myHttpResponse;
+  HTTPStatus_t mystatus = HTTPGet("34.173.153.191", 80, "/", &myHttpResponse);
   wii::os::OSReport("%d\n", mystatus);
 }
 
