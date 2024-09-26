@@ -677,3 +677,6 @@
 80274E64:OSYieldThread
 802753C8:OSResumeThread
 80258148:memcmp
+
+// new to SPMMulti
+801796A4:seq_mapChangeInit
