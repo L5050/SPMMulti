@@ -2,7 +2,6 @@
     setup_data defines the structure of the dat files in "./setup/"
     and handles the item-spawning side of them
 */
-
 #pragma once
 
 #include <common.h>
@@ -69,14 +68,14 @@ SIZE_ASSERT(SetupItemTemplate, 0x4)
 extern SetupItemTemplate setupItemTemplates[1]; // only contains id 0 - a coin
 
 /*
-    Takes a pointer to the item list of a setup file & its length and spawns them
+    Takes a pointer to the item list of a setup file & its length and spawns them 
 */
 void setupSpawnItems(s32 count, SetupItem * items);
 
 /*
     Takes a pointer to a setup file and returns the number of items in it, the
     version of the item data and the pointer to the array of items
-
+    
     Returns all 0s for setup files that aren't v5 or v6, or for v5 & v6 that
     don't have any item data in them
     (This reads uninitialised memory that happens to be 0 because of disc alignment)

@@ -660,6 +660,18 @@
 803BC458:marioMotTbl
 803B7970:saffronCookingScript
 804A3D28:marioStatusApplyStatuses
+80394DF0:default_item_use_evt
+80107D1C:evt_npc_get_active_count
+80102218:func_80102bf8
+800FEF4C:func_800ff8f8
+80107258:func_80107c38
+80104B70:evt_npc_wait_flip_finished
+80104BC4:evt_npc_finish_flip_instant
+80104D28:evt_npc_flip_to
+80104D88:evt_npc_flip
+
+// new to SPMMulti
+80179694:seq_mapChangeInit
 
 // 2023-09-02
 802957E4:IOS_OpenAsync
@@ -678,6 +690,3 @@
 80274E14:OSYieldThread
 80275378:OSResumeThread
 802580F0:memcmp
-
-// new to SPMMulti
-80179694:seq_mapChangeInit
