@@ -1637,6 +1637,15 @@ HTTPStatus_t HTTPClient_InitializeRequestHeaders( HTTPRequestHeaders_t * pReques
 
     if( returnStatus == HTTPSuccess )
     {
+        returnStatus = addHeader( pRequestHeaders,
+                                  "Content-Type",
+                                  msl::string::strlen("Content-Type"),
+                                  "text/plain",
+                                  msl::string::strlen("text/plain") );
+    }
+
+    if( returnStatus == HTTPSuccess )
+    {
         /* Write "Host: <Value>". */
         returnStatus = addHeader( pRequestHeaders,
                                   HTTP_HOST_FIELD,

@@ -17,5 +17,6 @@ int32_t send(NetworkContext_t *, const void *, size_t);
 void HTTPFree(HTTPResponse_t* response);
 HTTPStatus_t HTTPGet(const char* host, int port, const char* path, HTTPResponse_t* response);
 HTTPStatus_t HTTPSendRequest(const char* host, int port, const char* path, const char* method, u8* bodyBuffer, size_t bodyBufferSize, HTTPResponse_t* response);
+s32 SendUDP(const char* host, int port, const u8* data, size_t dataSize, u8* responseBuffer, size_t responseBufferSize);
 
 }
