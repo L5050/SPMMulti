@@ -17,6 +17,7 @@
 #include <spm/npcdrv.h>
 #include <spm/seq_mapchange.h>
 #include <spm/evt_seq.h>
+#include <spm/evt_snd.h>
 #include <spm/evt_msg.h>
 #include <spm/evtmgr.h>
 #include <spm/map_data.h>
@@ -32,7 +33,6 @@
 #include <wii/os.h>
 #include <msl/stdio.h>
 #include <msl/string.h>
-#include <EASTL/string.h>
 
 namespace mod {
   bool gIsDolphin;
@@ -64,7 +64,88 @@ namespace mod {
   };
 
   Player clients[24];
-  int numClients = 0;
+  int numOfClients = 0;
+
+  // Function to add a new Player to clients array
+  void addPlayer(int clientID, float positionX, float positionY, float positionZ, int attack, int maxHP, int currentHP) {
+      if (numOfClients < 24) { // Make sure there's space in the array
+          Player newPlayer;
+          newPlayer.clientID = clientID;
+          newPlayer.positionX = positionX;
+          newPlayer.positionY = positionY;
+          newPlayer.positionZ = positionZ;
+          newPlayer.attack = attack;
+          newPlayer.maxHP = maxHP;
+          newPlayer.currentHP = currentHP;
+          newPlayer.isDead = (currentHP <= 0);
+
+          clients[numOfClients] = newPlayer;  // Add the new player to the array
+          numOfClients++;  // Increment the number of clients
+
+          wii::os::OSReport("Player added with clientID: %d\n", clientID);
+      } else {
+          wii::os::OSReport("No space left to add a new player.\n");
+      }
+  }
+
+  // Function to remove a Player from clients array
+  void removePlayer(int clientID) {
+      bool found = false;
+
+      for (int i = 0; i < numOfClients; ++i) {
+          if (clients[i].clientID == clientID) {
+              found = true;
+              // Shift subsequent players down to fill the gap
+              for (int j = i; j < numOfClients - 1; ++j) {
+                  clients[j] = clients[j + 1];
+              }
+              numOfClients--;  // Decrement the number of clients
+              wii::os::OSReport("Player removed with clientID: %d\n", clientID);
+              break;
+          }
+      }
+
+      if (!found) {
+      wii::os::OSReport("Player with clientID %d not found\n", clientID);
+      }
+  }
+
+  // Function to check if a Player is in the clients array
+  bool isPlayerInClients(int clientID) {
+      for (int i = 0; i < numOfClients; ++i) {
+          if (clients[i].clientID == clientID) {
+              return true;
+          }
+      }
+      return false;
+  }
+
+  float getPositionXByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].positionX;
+      }
+    }
+    return -1.0;
+  }
+
+  float getPositionYByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].positionY;
+      }
+    }
+    return -1.0;
+  }
+
+  float getPositionZByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].positionZ;
+      }
+    }
+    return -1.0;
+  }
 
   /*
       Title Screen Custom Text
@@ -308,15 +389,32 @@ namespace mod {
           u8* clientIDs = reinterpret_cast<u8*>(responseBuffer);
           int numClients = responseBytes / sizeof(u8);  // Calculate how many integers were received
 
+          s32 realClientIDs[numClients];
+          s32 realNumClients = numClients;
+          s32 secondaryIndex = 0;
           wii::os::OSReport("Number of Clients: %d\n", numClients);  // Log the number of integers (clients)
 
           if (numClients > 0) {
-              for (int i = 0; i < numClients; ++i) {
-                  joiningClients[i] = static_cast<s32>(clientIDs[i]);  // Assign the converted client ID
-                  wii::os::OSReport("ClientID: %d\n", static_cast<s32>(clientIDs[i]));  // Report the client ID
-              }
 
-              evtEntry->lw[0] = numClients;
+            for (int i = 0; i < numClients; ++i) {
+              if (!isPlayerInClients(static_cast<s32>(clientIDs[i]))) {
+                realClientIDs[secondaryIndex] = static_cast<s32>(clientIDs[i]);  // Assign the converted client ID
+                secondaryIndex += 1;
+              } else {
+                realNumClients -= 1;
+              }
+            }
+
+            // if there are 0 or negative clients to load, set it to 0 so that no NPC is spawned and do nothing
+            if (realNumClients <= 0) {
+              realNumClients = 0;
+            } else {
+              for (int i = 0; i < realNumClients; ++i) {
+                  joiningClients[i] = realClientIDs[i];
+                  wii::os::OSReport("ClientID: %d\n", realClientIDs[i]);  // Report the client ID
+              }
+            }
+              evtEntry->lw[0] = realNumClients;
               wii::os::OSReport("Total Clients Processed: %d\n", evtEntry->lw[0]);
           } else {
               evtEntry->lw[0] = 0;
@@ -326,17 +424,43 @@ namespace mod {
           wii::os::OSReport("No response received or an error occurred\n");
       }
 
+      return 2;
+  }
+
+  s32 updateServerPos(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+      u8 responseBuffer[1024];
+      const char postBuffer[1024];
+
+      spm::mario::MarioWork * mwpp = spm::mario::marioGetPtr();
+      wii::mtx::Vec3 pos = mwpp -> position;
+      snprintf(postBuffer, sizeof(postBuffer), "updatePosition.%d.%d.%d.%s.%d.%d.%d",
+          spm::spmario::gp->gsw[2002],
+          spm::spmario::gp->gsw[2000],
+          spm::spmario::gp->gsw[2001],
+          spm::spmario::gp->saveName,
+          roundi(pos.x * 1000),
+          roundi(pos.y * 1000),
+          roundi(pos.z * 1000)
+      );
+
+      s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+
+      // Ensure data was received
+      if (responseBytes > 0) {
+          wii::os::OSReport("Response Bytes: %d\n", responseBytes);
+      } else {
+          wii::os::OSReport("No response received or an error occurred\n");
+      }
 
       return 2;
   }
 
-
-  s32 getPlayerInfo(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  s32 getPlayerPos(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
 
     u8 responseBuffer[512];
     const char postBuffer[1024];
     //spm::mario_pouch::MarioPouchWork* pouch_ptr = spm::mario_pouch::pouchGetPtr();
-    snprintf(postBuffer, sizeof(postBuffer), "getPlayerInfo.%d.%d.%d.%s.%s.%d",
+    snprintf(postBuffer, sizeof(postBuffer), "getPlayerPos.%d.%d.%d.%s.%s.%d",
       spm::spmario::gp -> gsw[2002],
       spm::spmario::gp -> gsw[2000],
       spm::spmario::gp -> gsw[2001],
@@ -385,6 +509,117 @@ namespace mod {
     return 2;
   }
 
+  s32 npcGetPlayerPos(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+
+    u8 responseBuffer[512];
+    const char postBuffer[1024];
+    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+    snprintf(postBuffer, sizeof(postBuffer), "getPlayerPos.%d.%d.%d.%s.%s.%d",
+      spm::spmario::gp -> gsw[2002],
+      spm::spmario::gp -> gsw[2000],
+      spm::spmario::gp -> gsw[2001],
+      spm::spmario::gp -> saveName,
+      spm::spmario::gp -> mapName,
+      ownerNpc -> unitWork[0]
+    );
+    s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+
+    // Ensure data was received
+    if (responseBytes > 0) {
+        wii::os::OSReport("Response Bytes: %d\n", responseBytes);
+
+        // Ensure we received 12 bytes (3 floats * 4 bytes per float)
+        if (responseBytes == 12) {
+            for (int i = 0; i < responseBytes; i += 4) {
+                // Extract 4 bytes for each float in little-endian order
+                u8 byte1 = responseBuffer[i];
+                u8 byte2 = responseBuffer[i + 1];
+                u8 byte3 = responseBuffer[i + 2];
+                u8 byte4 = responseBuffer[i + 3];
+
+                // Combine the bytes into a 32-bit integer (little-endian)
+                u32 rawBytes = (byte4 << 24) | (byte3 << 16) | (byte2 << 8) | byte1;
+
+                // Interpret the 32-bit integer as a float
+                f32 floatValue;
+                memcpy(&floatValue, &rawBytes, sizeof(f32));  // Copy raw bytes into float
+
+                // Log and assign the float value
+                evtEntry->lw[(i / 4) + 1] = floatValue;  // Store in lw[] array
+                wii::os::OSReport("PlayerPos: %f\n", floatValue);  // Report the float value
+            }
+
+            wii::os::OSReport("Number of Players Processed: %d\n", responseBytes / sizeof(f32));
+        } else {
+            evtEntry->lw[0] = 0;
+            wii::os::OSReport("Incorrect number of bytes received. Expected 12.\n");
+        }
+    } else {
+        evtEntry->lw[0] = 0;
+        wii::os::OSReport("No response received or an error occurred\n");
+    }
+    //spm::npcdrv::NPCEntry * otherPlayer = spm::npcdrv::npcEntryFromSetupEnemy(0, &pos, 422, &miscSetupData);
+    //spm::evtEntry(otherPlayer->templateUnkScript1, 1, 0x0);
+    return 2;
+  }
+
+  s32 getPlayerInfo(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+
+    u8 responseBuffer[512];
+    const char postBuffer[1024];
+    //spm::mario_pouch::MarioPouchWork* pouch_ptr = spm::mario_pouch::pouchGetPtr();
+    snprintf(postBuffer, sizeof(postBuffer), "getPlayerInfo.%d.%d.%d.%s.%s.%d",
+      spm::spmario::gp -> gsw[2002],
+      spm::spmario::gp -> gsw[2000],
+      spm::spmario::gp -> gsw[2001],
+      spm::spmario::gp -> saveName,
+      spm::spmario::gp -> mapName,
+      joiningClients[evtEntry -> lw[4]]
+    );
+    s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+
+    // Ensure data was received
+    if (responseBytes > 0) {
+        wii::os::OSReport("Response Bytes: %d\n", responseBytes);
+
+        // We expect 12 bytes (3 integers * 4 bytes per integer)
+        if (responseBytes == 12) {
+            s32 playerStats[3];  // Array to store the three integers (attack, maxHP, currentHP)
+
+            for (int i = 0; i < responseBytes; i += 4) {
+                // Extract 4 bytes for each integer in little-endian order
+                u8 byte1 = responseBuffer[i];
+                u8 byte2 = responseBuffer[i + 1];
+                u8 byte3 = responseBuffer[i + 2];
+                u8 byte4 = responseBuffer[i + 3];
+
+                // Combine the bytes into a 32-bit integer (little-endian)
+                s32 value = (byte4 << 24) | (byte3 << 16) | (byte2 << 8) | byte1;
+
+                // Assign the integer to the playerStats array
+                playerStats[i / 4] = value;
+
+                // Log the integer value
+                wii::os::OSReport("PlayerStat[%d]: %d\n", i / 4, value);
+            }
+            wii::os::OSReport("All player stats processed.\n");
+
+            // Player position MUST be stored in LW 1, 2, and 3 before this function is ran
+            addPlayer(joiningClients[evtEntry -> lw[4]], evtEntry -> lw[1], evtEntry -> lw[2], evtEntry -> lw[3], playerStats[0], playerStats[1], playerStats[2]);
+            evtEntry -> lw[5] = playerStats[0];
+            evtEntry -> lw[6] = playerStats[2];
+            evtEntry -> lw[7] = joiningClients[evtEntry -> lw[4]];
+        } else {
+            wii::os::OSReport("Unexpected response size: %d\n", responseBytes);
+        }
+    } else {
+        wii::os::OSReport("No response received or an error occurred.\n");
+    }
+
+    return 2;
+  }
+
+
   /*
       General mod functions
   */
@@ -395,33 +630,6 @@ namespace mod {
     spm::evtmgr::EvtScriptCode * arg = evtpatch::getInstructionArgv(link)[instruction];
     wii::os::OSReport("%x\n", arg);
     return arg;
-  }
-
-  float getPositionXByClientID(int clientID) {
-    for (int i = 0; i < numClients; ++i) {
-      if (clients[i].clientID == clientID) {
-        return clients[i].positionX;
-      }
-    }
-    return -1.0;
-  }
-
-  float getPositionYByClientID(int clientID) {
-    for (int i = 0; i < numClients; ++i) {
-      if (clients[i].clientID == clientID) {
-        return clients[i].positionY;
-      }
-    }
-    return -1.0;
-  }
-
-  float getPositionZByClientID(int clientID) {
-    for (int i = 0; i < numClients; ++i) {
-      if (clients[i].clientID == clientID) {
-        return clients[i].positionZ;
-      }
-    }
-    return -1.0;
   }
 
   const char startText1[] =
@@ -482,6 +690,9 @@ EVT_DECLARE_USER_FUNC(startServerConnection, 0)
 EVT_DECLARE_USER_FUNC(checkForPlayersJoiningRoom, 0)
 EVT_DECLARE_USER_FUNC(checkConnection, 1)
 EVT_DECLARE_USER_FUNC(returnPos, 2)
+EVT_DECLARE_USER_FUNC(getPlayerPos, 0)
+EVT_DECLARE_USER_FUNC(updateServerPos, 0)
+EVT_DECLARE_USER_FUNC(npcGetPlayerPos, 0)
 EVT_DECLARE_USER_FUNC(getPlayerInfo, 0)
 
 EVT_BEGIN(mariounk2)
@@ -489,7 +700,18 @@ EVT_BEGIN(mariounk2)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(mariounk7)
-  SET(LW(0), LW(0))
+  USER_FUNC(npcGetPlayerPos)
+  USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("me"), LW(5), LW(6), LW(7))
+  IF_LARGE(LW(2), LW(6))
+    SET(LW(8), LW(2))
+    SUB(LW(8), LW(6))
+    USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_JUMP1"), PTR("me"))
+    USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), 400)
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0x19, 0)
+  ELSE()
+    USER_FUNC(spm::evt_npc::evt_npc_walk_to, PTR("me"), LW(1), LW(3), 0, FLOAT(140.0), 4, 0, 0)
+  END_IF()
+  WAIT_MSEC(500)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(registerToServer)
@@ -506,19 +728,35 @@ EVT_BEGIN(evt_connectToServer)
     USER_FUNC(startServerConnection)
     USER_FUNC(spm::evt_msg::evt_msg_print, 1, PTR(connectionText2), 0, 0)
     WAIT_MSEC(1000)
+  END_IF()
+  DO(0)
     USER_FUNC(checkForPlayersJoiningRoom)
     IF_LARGE(LW(0), 0)
       SET(LW(4), 0)
       DO(0)
+        USER_FUNC(getPlayerPos)
         USER_FUNC(getPlayerInfo)
-        USER_FUNC(spm::evt_npc::evt_npc_entry_from_template, 0, 422, LW(1), LW(2), LW(3), PTR(0), PTR("me"))
+        USER_FUNC(spm::evt_npc::evt_npc_entry_from_template, 0, 422, 0, -100, 0, LW(10), EVT_NULLPTR)
+        USER_FUNC(spm::evt_npc::evt_npc_flip_to, LW(10), 1)
+        USER_FUNC(spm::evt_npc::evt_npc_finish_flip_instant, LW(10))
+        USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_EVT_100_PC_LINE_DRAW1"), LW(10))
+        USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_EVT_100_PC_LINE_TURN1"), LW(10))
+        USER_FUNC(spm::evt_npc::evt_npc_flip, LW(10))
+        USER_FUNC(spm::evt_npc::evt_npc_set_part_attack_power, LW(10), 1, LW(5))
+        MUL(LW(5), 2)
+        USER_FUNC(spm::evt_npc::evt_npc_set_part_attack_power, LW(10), 2, LW(5))
+        USER_FUNC(spm::evt_npc::evt_npc_set_hp, LW(10), LW(6))
+        USER_FUNC(spm::evt_npc::evt_npc_set_position, LW(10), LW(1), LW(2), LW(3))
+        USER_FUNC(spm::evt_npc::evt_npc_set_unitwork, LW(10), 0, LW(7))
         ADD(LW(4), 1)
         IF_EQUAL(LW(4), LW(0))
           DO_BREAK()
         END_IF()
       WHILE()
     END_IF()
-  END_IF()
+    WAIT_MSEC(500)
+    USER_FUNC(updateServerPos)
+  WHILE()
 RETURN_FROM_CALL()
 
 void patchScripts()
