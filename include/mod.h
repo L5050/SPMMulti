@@ -6,6 +6,9 @@ namespace mod {
 
 extern bool gIsDolphin;
 
+EVT_DECLARE(evt_spawn_players)
+
+s32 roundi(f32 x);
 void main();
 
 }
