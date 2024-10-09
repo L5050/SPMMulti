@@ -39,7 +39,7 @@ namespace mod {
   bool gIsDolphin;
   bool tfirstRun = false;
   bool isConnected = false;
-  u32 sockfd = -1;
+  u32 sockfd;
 
   struct Player {
     int clientID;
@@ -163,7 +163,7 @@ namespace mod {
       struct hostent* server;
       socklen_t recv_addr_len = sizeof(recv_addr);
 
-      if (sockfd < 0) {
+      if (!sockfd || sockfd < 0) {
         sockfd = Mynet_socket(AF_INET, SOCK_DGRAM, 0);  // Use SOCK_DGRAM for UDP
       }
 
@@ -680,7 +680,11 @@ namespace mod {
     return 2;
   }
 
-
+  s32 npcFixAnims(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+    spm::npcdrv::func_801ca1a4(ownerNpc, &ownerNpc -> m_Anim);
+    return 2;
+}
   /*
       General mod functions
   */
@@ -765,6 +769,7 @@ EVT_DECLARE_USER_FUNC(returnPos, 2)
 EVT_DECLARE_USER_FUNC(getPlayerPos, 0)
 EVT_DECLARE_USER_FUNC(updateServerPos, 0)
 EVT_DECLARE_USER_FUNC(npcGetPlayerPos, 0)
+EVT_DECLARE_USER_FUNC(npcFixAnims, 0)
 EVT_DECLARE_USER_FUNC(getPlayerInfo, 0)
 
 EVT_BEGIN(mariounk2)
@@ -778,8 +783,12 @@ EVT_BEGIN(mariounk7)
     SET(LW(8), LW(2))
     SUB(LW(8), LW(6))
     USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_JUMP1"), PTR("me"))
-    USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), 400)
+    USER_FUNC(npcFixAnims)
     USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0x19, 0)
+    USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), 400)
+    USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
+    USER_FUNC(npcFixAnims)
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
   ELSE()
     USER_FUNC(spm::evt_npc::evt_npc_walk_to, PTR("me"), LW(1), LW(3), 0, FLOAT(140.0), 4, 0, 0)
   END_IF()
