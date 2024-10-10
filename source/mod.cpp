@@ -427,6 +427,7 @@ namespace mod {
             evtEntry->lw[5] = playerStats[0];
             evtEntry->lw[6] = playerStats[2];
             evtEntry->lw[7] = joiningClients[i];
+            checkingForPlayers = true;
           }
           joiningClientsNum = 0;
       }
@@ -1033,6 +1034,27 @@ namespace mod {
     return 2;
   }
 
+  s32 npcDeletePlayer(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+    removePlayer(ownerNpc -> unitWork[0]);
+    return 2;
+  }
+
+  s32 adjustJumpSpeed(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+      const f32 maxHeight = 128.0;
+      const f32 maxSpeed = 400.0;
+      f32 height = evtEntry -> lw[8] + 11.0;
+
+      if (height >= maxHeight) {
+          return maxSpeed;
+      }
+
+      // Otherwise, calculate speed proportionally to height
+      f32 speed = (height / maxHeight) * maxSpeed;
+      evtEntry -> lw[8] = speed;
+      return 2;
+}
+
 EVT_DECLARE_USER_FUNC(startWebhook, 0)
 EVT_DECLARE_USER_FUNC(startServerConnection, 0)
 EVT_DECLARE_USER_FUNC(checkForPlayersJoiningRoom, 0)
@@ -1044,9 +1066,15 @@ EVT_DECLARE_USER_FUNC(npcGetPlayerPos, 0)
 EVT_DECLARE_USER_FUNC(npcFixAnims, 0)
 EVT_DECLARE_USER_FUNC(getPlayerInfo, 0)
 EVT_DECLARE_USER_FUNC(checkPosEqual, 0)
+EVT_DECLARE_USER_FUNC(npcDeletePlayer, 0)
+EVT_DECLARE_USER_FUNC(adjustJumpSpeed, 0)
 
 EVT_BEGIN(mariounk2)
   SET(LW(0), LW(0))
+RETURN_FROM_CALL()
+
+EVT_BEGIN(mariounk6)
+  USER_FUNC(npcDeletePlayer)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(mariounk7)
@@ -1054,13 +1082,15 @@ EVT_BEGIN(mariounk7)
   USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("me"), LW(5), LW(6), LW(7))
   USER_FUNC(checkPosEqual)
   IF_EQUAL(LW(8), 0)
-    IF_LARGE(LW(2), LW(6))
-      SET(LW(8), LW(2))
-      SUB(LW(8), LW(6))
+    SET(LW(8), LW(2))
+    SUB(LW(8), LW(6))
+    SUB(LW(8), 11)
+    IF_LARGE(LW(8), LW(6))
       USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_JUMP1"), PTR("me"))
       USER_FUNC(npcFixAnims)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0x19, 0)
-      USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), 400)
+      USER_FUNC(adjustJumpSpeed)
+      USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), LW(8))
       USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
       USER_FUNC(npcFixAnims)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
@@ -1152,6 +1182,7 @@ void patchScripts()
   evtpatch::hookEvt(he1_01_md->initScript, 75, (spm::evtmgr::EvtScriptCode*)evt_connectToServer);
   //evtpatch::hookEvtReplaceBlock(spm::npcdrv::npcEnemyTemplates[422].unkScript2, 1, (spm::evtmgr::EvtScriptCode*)mariounk2, 18);
   evtpatch::hookEvtReplace(spm::npcdrv::npcEnemyTemplates[422].unkScript7, 8, (spm::evtmgr::EvtScriptCode*)mariounk7);
+  evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript6, 1, (spm::evtmgr::EvtScriptCode*)mariounk6);
 }
 
 void main()
