@@ -1043,10 +1043,10 @@ namespace mod {
   s32 adjustJumpSpeed(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
       const f32 maxHeight = 128.0;
       const f32 maxSpeed = 400.0;
-      f32 height = evtEntry -> lw[8] + 11.0;
+      f32 height = evtEntry -> lw[8];
 
       if (height >= maxHeight) {
-          return maxSpeed;
+          evtEntry -> lw[8] = maxSpeed;
       }
 
       // Otherwise, calculate speed proportionally to height
