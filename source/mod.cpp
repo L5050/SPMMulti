@@ -32,6 +32,7 @@
 #include <wii/os/OSError.h>
 #include <wii/os/OSThread.h>
 #include <wii/ipc.h>
+#include <wii/vi.h>
 #include <wii/os.h>
 #include <msl/stdio.h>
 #include <msl/string.h>
@@ -223,7 +224,7 @@ namespace mod {
     while (1) {
       timerLimit += 1;
       checkForPlayersTimer += 1;
-      if (timerLimit >= 300){
+      if (timerLimit >= 11){
       timerLimit = 0;
       bool varCheck = true;
       if (varCheck == true) { //update position
@@ -253,7 +254,7 @@ namespace mod {
         }
 
       }
-      if (checkingForPlayers == true && checkForPlayersTimer > 120) { //check for players
+      if (checkingForPlayers == true && checkForPlayersTimer > 60) { //check for players
         checkingForPlayers = false;
         checkForPlayersTimer = 0;
 
@@ -482,6 +483,7 @@ namespace mod {
         }
       }
       wii::os::OSYieldThread();
+      wii::vi::VIWaitForRetrace();
     }}
   }
 
@@ -1021,6 +1023,16 @@ namespace mod {
     return 2;
   }
 
+  s32 checkPosEqual(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+    if (evtEntry -> lw[1] == evtEntry -> lw[5] && evtEntry -> lw[2] == evtEntry -> lw[6] && evtEntry -> lw[3] == evtEntry -> lw[6])
+    {
+      evtEntry -> lw[8] = 1;
+    } else {
+      evtEntry -> lw[8] = 0;
+    }
+    return 2;
+  }
+
 EVT_DECLARE_USER_FUNC(startWebhook, 0)
 EVT_DECLARE_USER_FUNC(startServerConnection, 0)
 EVT_DECLARE_USER_FUNC(checkForPlayersJoiningRoom, 0)
@@ -1031,6 +1043,7 @@ EVT_DECLARE_USER_FUNC(updateServerPos, 0)
 EVT_DECLARE_USER_FUNC(npcGetPlayerPos, 0)
 EVT_DECLARE_USER_FUNC(npcFixAnims, 0)
 EVT_DECLARE_USER_FUNC(getPlayerInfo, 0)
+EVT_DECLARE_USER_FUNC(checkPosEqual, 0)
 
 EVT_BEGIN(mariounk2)
   SET(LW(0), LW(0))
@@ -1039,20 +1052,25 @@ RETURN_FROM_CALL()
 EVT_BEGIN(mariounk7)
   USER_FUNC(npcGetPlayerPos)
   USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("me"), LW(5), LW(6), LW(7))
-  IF_LARGE(LW(2), LW(6))
-    SET(LW(8), LW(2))
-    SUB(LW(8), LW(6))
-    USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_JUMP1"), PTR("me"))
-    USER_FUNC(npcFixAnims)
-    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0x19, 0)
-    USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), 400)
-    USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
-    USER_FUNC(npcFixAnims)
-    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
-  ELSE()
-    USER_FUNC(spm::evt_npc::evt_npc_walk_to, PTR("me"), LW(1), LW(3), 0, FLOAT(140.0), 4, 0, 0)
-  END_IF()
-  WAIT_MSEC(500)
+  USER_FUNC(checkPosEqual)
+    IF_LARGE(LW(2), LW(6))
+      SET(LW(8), LW(2))
+      SUB(LW(8), LW(6))
+      USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_JUMP1"), PTR("me"))
+      USER_FUNC(npcFixAnims)
+      USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0x19, 0)
+      USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), 400)
+      USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
+      USER_FUNC(npcFixAnims)
+      USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+    ELSE()
+      USER_FUNC(npcFixAnims)
+      USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 2, 0)
+      USER_FUNC(spm::evt_npc::evt_npc_walk_to, PTR("me"), LW(1), LW(3), 0, FLOAT(150.0), 4, 0, 0)
+      USER_FUNC(npcFixAnims)
+      USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+    END_IF()
+  WAIT_FRM(12)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(registerToServer)
