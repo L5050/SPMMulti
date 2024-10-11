@@ -52,6 +52,7 @@ namespace mod {
     int maxHP;
     int currentHP;
     bool isDead;
+    bool isDisconnected;
 
     void heal(int health) {
       currentHP += health;
@@ -82,6 +83,7 @@ namespace mod {
           newPlayer.maxHP = maxHP;
           newPlayer.currentHP = currentHP;
           newPlayer.isDead = (currentHP <= 0);
+          newPlayer.isDisconnected = false;
 
           clients[numOfClients] = newPlayer;  // Add the new player to the array
           numOfClients++;  // Increment the number of clients
@@ -99,6 +101,7 @@ namespace mod {
       for (int i = 0; i < numOfClients; ++i) {
           if (clients[i].clientID == clientID) {
               found = true;
+              clients[i].clientID = 0;
               // Shift subsequent players down to fill the gap
               for (int j = i; j < numOfClients - 1; ++j) {
                   clients[j] = clients[j + 1];
@@ -112,6 +115,16 @@ namespace mod {
       if (!found) {
       wii::os::OSReport("Player with clientID %d not found\n", clientID);
       }
+  }
+
+  void removeAllPlayers() {
+
+      for (int i = 0; i < numOfClients; ++i) {
+          clients[i].clientID = 0;
+      }
+      numOfClients = 0;
+
+      wii::os::OSReport("All players have been removed.\n");
   }
 
   // Function to check if a Player is in the clients array
@@ -218,6 +231,8 @@ namespace mod {
   u8 stack[STACK_SIZE];
   wii::os::OSThread thread;
   s32 timerLimit = 0;
+  bool leavingMap = false;
+
 
   void spmServerLoop(u32 param) {
     (void) param;
@@ -234,14 +249,15 @@ namespace mod {
 
         spm::mario::MarioWork * mwpp = spm::mario::marioGetPtr();
         wii::mtx::Vec3 pos = mwpp -> position;
-        snprintf(postBuffer, sizeof(postBuffer), "updatePosition.%d.%d.%d.%s.%d.%d.%d",
+        snprintf(postBuffer, sizeof(postBuffer), "updatePosition.%d.%d.%d.%s.%d.%d.%d.%s",
             spm::spmario::gp->gsw[2002],
             spm::spmario::gp->gsw[2000],
             spm::spmario::gp->gsw[2001],
             spm::spmario::gp->saveName,
             roundi(pos.x * 1000),
             roundi(pos.y * 1000),
-            roundi(pos.z * 1000)
+            roundi(pos.z * 1000),
+            spm::spmario::gp->mapName
         );
 
         s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
@@ -470,15 +486,20 @@ namespace mod {
                       wii::os::OSReport("PlayerPos: %f\n", floatValue);  // Report the float value
                   }
 
-                  wii::os::OSReport("Number of Players Processed: %d\n", responseBytes / sizeof(f32));
+                  wii::os::OSReport("Number of Players Processede: %d\n", responseBytes / sizeof(f32));
               } else {
                   wii::os::OSReport("Incorrect number of bytes received. Expected 12.\n");
+                  clients[i].isDisconnected = true;
               }
               clients[i].positionX = posArray[0];
               clients[i].positionY = posArray[1];
               clients[i].positionZ = posArray[2];
+              if (posArray[0] == 0.0 && posArray[1] == 0.0 && posArray[2] == 0.0) {
+                clients[i].isDisconnected = true;
+              }
           } else {
-              wii::os::OSReport("No response received or an error occurred\n");
+              wii::os::OSReport("No response received or an error occurredeww\n");
+              clients[i].isDisconnected = true;
           }
 
         }
@@ -953,7 +974,7 @@ namespace mod {
   */
 
   void (*seq_gameExit)(spm::seqdrv::SeqWork *param_1);
-  void patchGameMain() {
+  void patchGameExit() {
   seq_gameExit = patch::hookFunction(spm::seq_game::seq_gameExit,
   [](spm::seqdrv::SeqWork *param_1)
       {
@@ -962,6 +983,17 @@ namespace mod {
       }
   );
   }
+
+  void (*seq_mapChangeInit)(spm::seqdrv::SeqWork *param_1);
+  void patchMapInit() {
+  seq_mapChangeInit = patch::hookFunction(spm::seq_mapchange::seq_mapChangeInit,
+  [](spm::seqdrv::SeqWork *param_1)
+      {
+          removeAllPlayers();
+          seq_mapChangeInit(param_1);
+      }
+  );
+}
 
   spm::evtmgr::EvtScriptCode * getInstructionEvtArg(spm::evtmgr::EvtScriptCode * script, s32 line, int instruction) {
     spm::evtmgr::EvtScriptCode * link = evtpatch::getEvtInstruction(script, line);
@@ -1030,6 +1062,13 @@ namespace mod {
       evtEntry -> lw[8] = 1;
     } else {
       evtEntry -> lw[8] = 0;
+    }
+    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+    s32 clientsss = ownerNpc -> unitWork[0];
+    wii::os::OSReport("funny client %d\n", clients[clientsss]);
+    if (clients[clientsss].isDisconnected == true) {
+      evtEntry -> lw[10] = 1;
+      wii::os::OSReport("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n");
     }
     return 2;
   }
@@ -1100,6 +1139,9 @@ EVT_BEGIN(mariounk7)
       USER_FUNC(npcFixAnims)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
     END_IF()
+  END_IF()
+  IF_EQUAL(LW(10), 1)
+    USER_FUNC(spm::evt_npc::evt_npc_delete, PTR("me"))
   END_IF()
   WAIT_FRM(12)
 RETURN_FROM_CALL()
@@ -1195,6 +1237,8 @@ void main()
     NetMemoryAccess::init();
     titleScreenCustomTextPatch();
     patchScripts();
+    patchMapInit();
+    //patchGameExit();
     //spm::npcdrv::npcEnemyTemplates[422].unkScript2 = mariounk2;
     //tryChainload();
 }
