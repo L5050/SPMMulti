@@ -164,6 +164,15 @@ namespace mod {
     return -1.0;
   }
 
+  bool getDCByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].isDisconnected;
+      }
+    }
+    return -1.0;
+  }
+
     const int MAX_TOKENS = 100;
     s32 joiningClients[MAX_TOKENS];
     s32 joiningClientsNum = 0;
@@ -270,7 +279,7 @@ namespace mod {
         }
 
       }
-      if (checkingForPlayers == true && checkForPlayersTimer > 60) { //check for players
+      if (checkForPlayersTimer > 60) { //check for players
         checkingForPlayers = false;
         checkForPlayersTimer = 0;
 
@@ -1063,12 +1072,16 @@ namespace mod {
     } else {
       evtEntry -> lw[8] = 0;
     }
+    return 2;
+  }
+
+  s32 checkPlayerDC(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
     spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
-    s32 clientsss = ownerNpc -> unitWork[0];
-    wii::os::OSReport("funny client %d\n", clients[clientsss]);
-    if (clients[clientsss].isDisconnected == true) {
+    s32 client = ownerNpc -> unitWork[0];
+
+    if (getDCByClientID(client) == true) {
       evtEntry -> lw[10] = 1;
-      wii::os::OSReport("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n");
+      removePlayer(client);
     }
     return 2;
   }
@@ -1107,6 +1120,7 @@ EVT_DECLARE_USER_FUNC(getPlayerInfo, 0)
 EVT_DECLARE_USER_FUNC(checkPosEqual, 0)
 EVT_DECLARE_USER_FUNC(npcDeletePlayer, 0)
 EVT_DECLARE_USER_FUNC(adjustJumpSpeed, 0)
+EVT_DECLARE_USER_FUNC(checkPlayerDC, 0)
 
 EVT_BEGIN(mariounk2)
   SET(LW(0), LW(0))
@@ -1140,6 +1154,7 @@ EVT_BEGIN(mariounk7)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
     END_IF()
   END_IF()
+  USER_FUNC(checkPlayerDC)
   IF_EQUAL(LW(10), 1)
     USER_FUNC(spm::evt_npc::evt_npc_delete, PTR("me"))
   END_IF()
