@@ -12,6 +12,7 @@
 #include "exception.h"
 #include "evtdebug.h"
 #include "romfontexpand.h"
+#include "errno.h"
 
 #include <spm/setup_data.h>
 #include <spm/npcdrv.h>
@@ -179,7 +180,7 @@ namespace mod {
     f32 joiningClientsPos[3];
     bool checkingForPlayers = true;
     s32 checkForPlayersTimer = 0;
-
+    bool sockIsCreated = false;
   /// @brief Sends a UDP packet to the server and waits for a response
   /// @param host The host (e.g., "192.168.1.1")
   /// @param port The port (e.g., 8080)
@@ -192,9 +193,11 @@ namespace mod {
       struct sockaddr_in serv_addr, recv_addr;
       struct hostent* server;
       socklen_t recv_addr_len = sizeof(recv_addr);
+      int timeoutSeconds = 1;
 
       if (!sockfd || sockfd < 0) {
         sockfd = Mynet_socket(AF_INET, SOCK_DGRAM, 0);  // Use SOCK_DGRAM for UDP
+        sockIsCreated = true;
       }
 
       if (sockfd < 0) {
@@ -214,8 +217,18 @@ namespace mod {
       serv_addr.sin_port = htons(port);
       msl::string::memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
 
+      // Set a receive timeout for the socket
+      if (sockIsCreated == true){
+        // Set a receive timeout for the socket
+           /*struct timeval timeout;
+           timeout.tv_sec = timeoutSeconds;
+           timeout.tv_usec = 0;*/
+
+           Mynet_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (void*)&timeoutSeconds, sizeof(timeoutSeconds));
+    }
+      sockIsCreated = false;
       // Send the UDP data
-      int32_t sentBytes = Mynet_sendto(sockfd, data, dataSize, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+      s32 sentBytes = Mynet_sendto(sockfd, data, dataSize, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
       if (sentBytes < 0) {
           wii::os::OSReport("ERROR sending UDP packet\n");
           Mynet_close(sockfd);
@@ -248,7 +261,7 @@ namespace mod {
     while (1) {
       timerLimit += 1;
       checkForPlayersTimer += 1;
-      if (timerLimit >= 11){
+      if (timerLimit >= 3){
       timerLimit = 0;
       bool varCheck = true;
       if (varCheck == true) { //update position
@@ -1126,6 +1139,10 @@ EVT_BEGIN(mariounk2)
   SET(LW(0), LW(0))
 RETURN_FROM_CALL()
 
+EVT_BEGIN(mariounk3)
+  SET(LW(1), 50)
+RETURN_FROM_CALL()
+
 EVT_BEGIN(mariounk6)
   USER_FUNC(npcDeletePlayer)
 RETURN_FROM_CALL()
@@ -1175,35 +1192,7 @@ EVT_BEGIN(evt_connectToServer)
     USER_FUNC(startServerConnection)
     USER_FUNC(spm::evt_msg::evt_msg_print, 1, PTR(connectionText2), 0, 0)
     WAIT_MSEC(1000)
-  END_IF() /*
-  DO(0)
-    USER_FUNC(checkForPlayersJoiningRoom)
-    IF_LARGE(LW(0), 0)
-      SET(LW(4), 0)
-      DO(0)
-        USER_FUNC(getPlayerPos)
-        USER_FUNC(getPlayerInfo)
-        USER_FUNC(spm::evt_npc::evt_npc_entry_from_template, 0, 422, 0, -100, 0, LW(10), EVT_NULLPTR)
-        USER_FUNC(spm::evt_npc::evt_npc_flip_to, LW(10), 1)
-        USER_FUNC(spm::evt_npc::evt_npc_finish_flip_instant, LW(10))
-        USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_EVT_100_PC_LINE_DRAW1"), LW(10))
-        USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_EVT_100_PC_LINE_TURN1"), LW(10))
-        USER_FUNC(spm::evt_npc::evt_npc_flip, LW(10))
-        USER_FUNC(spm::evt_npc::evt_npc_set_part_attack_power, LW(10), 1, LW(5))
-        MUL(LW(5), 2)
-        USER_FUNC(spm::evt_npc::evt_npc_set_part_attack_power, LW(10), 2, LW(5))
-        USER_FUNC(spm::evt_npc::evt_npc_set_hp, LW(10), LW(6))
-        USER_FUNC(spm::evt_npc::evt_npc_set_position, LW(10), LW(1), LW(2), LW(3))
-        USER_FUNC(spm::evt_npc::evt_npc_set_unitwork, LW(10), 0, LW(7))
-        ADD(LW(4), 1)
-        IF_EQUAL(LW(4), LW(0))
-          DO_BREAK()
-        END_IF()
-      WHILE()
-    END_IF()
-    WAIT_MSEC(500)
-    USER_FUNC(updateServerPos)
-  WHILE()*/
+  END_IF()
 RETURN_FROM_CALL()
 
 EVT_BEGIN(evt_spawn_players)
@@ -1239,6 +1228,7 @@ void patchScripts()
   //evtpatch::hookEvtReplaceBlock(spm::npcdrv::npcEnemyTemplates[422].unkScript2, 1, (spm::evtmgr::EvtScriptCode*)mariounk2, 18);
   evtpatch::hookEvtReplace(spm::npcdrv::npcEnemyTemplates[422].unkScript7, 8, (spm::evtmgr::EvtScriptCode*)mariounk7);
   evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript6, 1, (spm::evtmgr::EvtScriptCode*)mariounk6);
+  evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript3, 71, (spm::evtmgr::EvtScriptCode*)mariounk3);
 }
 
 void main()
