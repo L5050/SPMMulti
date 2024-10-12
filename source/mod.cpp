@@ -193,11 +193,16 @@ namespace mod {
       struct sockaddr_in serv_addr, recv_addr;
       struct hostent* server;
       socklen_t recv_addr_len = sizeof(recv_addr);
-      int timeoutSeconds = 1;
 
       if (!sockfd || sockfd < 0) {
         sockfd = Mynet_socket(AF_INET, SOCK_DGRAM, 0);  // Use SOCK_DGRAM for UDP
-        sockIsCreated = true;
+        
+        struct timeval timeout;
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 200;
+
+        int ret = Mynet_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+        wii::os::OSReport("Socket timeout ret: %d\n", ret);
       }
 
       if (sockfd < 0) {
@@ -217,16 +222,6 @@ namespace mod {
       serv_addr.sin_port = htons(port);
       msl::string::memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
 
-      // Set a receive timeout for the socket
-      if (sockIsCreated == true){
-        // Set a receive timeout for the socket
-           /*struct timeval timeout;
-           timeout.tv_sec = timeoutSeconds;
-           timeout.tv_usec = 0;*/
-
-           Mynet_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (void*)&timeoutSeconds, sizeof(timeoutSeconds));
-    }
-      sockIsCreated = false;
       // Send the UDP data
       s32 sentBytes = Mynet_sendto(sockfd, data, dataSize, 0, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
       if (sentBytes < 0) {
