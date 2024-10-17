@@ -18,6 +18,7 @@
 #include <spm/npcdrv.h>
 #include <spm/seq_mapchange.h>
 #include <spm/evt_seq.h>
+#include <spm/evt_eff.h>
 #include <spm/evt_snd.h>
 #include <spm/evt_msg.h>
 #include <spm/evtmgr.h>
@@ -120,11 +121,11 @@ namespace mod {
 
   void removeAllPlayers() {
 
-      for (int i = 0; i < numOfClients; ++i) {
-          clients[i].clientID = 0;
+     for (int i = 0; i < numOfClients; ++i) {
+       if (clients[i].clientID != 0) {
+         removePlayer(clients[i].clientID);
       }
-      numOfClients = 0;
-
+    }
       wii::os::OSReport("All players have been removed.\n");
   }
 
@@ -196,7 +197,7 @@ namespace mod {
 
       if (!sockfd || sockfd < 0) {
         sockfd = Mynet_socket(AF_INET, SOCK_DGRAM, 0);  // Use SOCK_DGRAM for UDP
-        
+
         struct timeval timeout;
         timeout.tv_sec = 1;
         timeout.tv_usec = 200;
@@ -513,6 +514,7 @@ namespace mod {
               clients[i].positionZ = posArray[2];
               if (posArray[0] == 0.0 && posArray[1] == 0.0 && posArray[2] == 0.0) {
                 clients[i].isDisconnected = true;
+                removePlayer(clients[i].clientID);
               }
           } else {
               wii::os::OSReport("No response received or an error occurredeww\n");
@@ -869,56 +871,7 @@ namespace mod {
   s32 npcGetPlayerPos(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
     spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
     s32 leClient = ownerNpc -> unitWork[0];
-    /*
-    u8 responseBuffer[512];
-    const char postBuffer[1024];
-    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
-    snprintf(postBuffer, sizeof(postBuffer), "getPlayerPos.%d.%d.%d.%s.%s.%d",
-      spm::spmario::gp -> gsw[2002],
-      spm::spmario::gp -> gsw[2000],
-      spm::spmario::gp -> gsw[2001],
-      spm::spmario::gp -> saveName,
-      spm::spmario::gp -> mapName,
-      ownerNpc -> unitWork[0]
-    );
-    s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
 
-    // Ensure data was received
-    if (responseBytes > 0) {
-        wii::os::OSReport("Response Bytes: %d\n", responseBytes);
-
-        // Ensure we received 12 bytes (3 floats * 4 bytes per float)
-        if (responseBytes == 12) {
-            for (int i = 0; i < responseBytes; i += 4) {
-                // Extract 4 bytes for each float in little-endian order
-                u8 byte1 = responseBuffer[i];
-                u8 byte2 = responseBuffer[i + 1];
-                u8 byte3 = responseBuffer[i + 2];
-                u8 byte4 = responseBuffer[i + 3];
-
-                // Combine the bytes into a 32-bit integer (little-endian)
-                u32 rawBytes = (byte4 << 24) | (byte3 << 16) | (byte2 << 8) | byte1;
-
-                // Interpret the 32-bit integer as a float
-                f32 floatValue;
-                memcpy(&floatValue, &rawBytes, sizeof(f32));  // Copy raw bytes into float
-
-                // Log and assign the float value
-                evtEntry->lw[(i / 4) + 1] = floatValue;  // Store in lw[] array
-                wii::os::OSReport("PlayerPos: %f\n", floatValue);  // Report the float value
-            }
-
-            wii::os::OSReport("Number of Players Processed: %d\n", responseBytes / sizeof(f32));
-        } else {
-            evtEntry->lw[0] = 0;
-            wii::os::OSReport("Incorrect number of bytes received. Expected 12.\n");
-        }
-    } else {
-        evtEntry->lw[0] = 0;
-        wii::os::OSReport("No response received or an error occurred\n");
-    }
-    //spm::npcdrv::NPCEntry * otherPlayer = spm::npcdrv::npcEntryFromSetupEnemy(0, &pos, 422, &miscSetupData);
-    //spm::evtEntry(otherPlayer->templateUnkScript1, 1, 0x0); */
     evtEntry->lw[1] = getPositionXByClientID(leClient);
     evtEntry->lw[2] = getPositionYByClientID(leClient);
     evtEntry->lw[3] = getPositionZByClientID(leClient);
@@ -1074,7 +1027,21 @@ namespace mod {
   }
 
   s32 checkPosEqual(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
-    if (evtEntry -> lw[1] == evtEntry -> lw[5] && evtEntry -> lw[2] == evtEntry -> lw[6] && evtEntry -> lw[3] == evtEntry -> lw[6])
+
+    // LW 1 2 and 3 are the positions of the player on the server, LW 5 6 and 7 are the positions of the player on the client
+    // Needs to be cast to int and back with some math in order to truncate the value properly so that extremely minor differences dont effect the outcome of the function
+    f32 serverPosX = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[1]) * 100) / 100.0f;
+    f32 serverPosY = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[2]) * 100) / 100.0f;
+    f32 serverPosZ = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[3]) * 100) / 100.0f;
+    f32 clientPosX = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[5]) * 100) / 100.0f;
+    f32 clientPosY = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[6]) * 100) / 100.0f;
+    f32 clientPosZ = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[7]) * 100) / 100.0f;
+
+    wii::os::OSReport("PosX %f %f\n", serverPosX, clientPosX);
+    wii::os::OSReport("PosY %f %f\n", serverPosY, clientPosY);
+    wii::os::OSReport("PosZ %f %f\n", serverPosZ, clientPosZ);
+
+    if (serverPosX == clientPosX && serverPosY == clientPosY && serverPosZ == clientPosZ)
     {
       evtEntry -> lw[8] = 1;
     } else {
@@ -1115,6 +1082,13 @@ namespace mod {
       return 2;
 }
 
+  s32 npcGrabName(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+
+    spm::evtmgr_cmd::evtSetValue(evtEntry, evtEntry -> lw[10], (int)ownerNpc -> name);
+    return 2;
+  }
+
 EVT_DECLARE_USER_FUNC(startWebhook, 0)
 EVT_DECLARE_USER_FUNC(startServerConnection, 0)
 EVT_DECLARE_USER_FUNC(checkForPlayersJoiningRoom, 0)
@@ -1124,6 +1098,7 @@ EVT_DECLARE_USER_FUNC(getPlayerPos, 0)
 EVT_DECLARE_USER_FUNC(updateServerPos, 0)
 EVT_DECLARE_USER_FUNC(npcGetPlayerPos, 0)
 EVT_DECLARE_USER_FUNC(npcFixAnims, 0)
+EVT_DECLARE_USER_FUNC(npcGrabName, 0)
 EVT_DECLARE_USER_FUNC(getPlayerInfo, 0)
 EVT_DECLARE_USER_FUNC(checkPosEqual, 0)
 EVT_DECLARE_USER_FUNC(npcDeletePlayer, 0)
@@ -1143,6 +1118,15 @@ EVT_BEGIN(mariounk6)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(mariounk7)
+  USER_FUNC(spm::evt_npc::evt_npc_set_move_mode, PTR("me"), 1)
+  LBL(0)
+  USER_FUNC(checkPlayerDC)
+  IF_EQUAL(LW(10), 1)
+    USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("me"), LW(0), LW(1), LW(2))
+    USER_FUNC(spm::evt_eff::evt_eff, 0, PTR("dmen_warp"), 0, LW(0), LW(1), LW(2), 0, 0, 0, 0, 0, 0, 0, 0)
+    USER_FUNC(spm::evt_snd::evt_snd_sfxon_3d, PTR("SFX_BS_DMN_GOOUT1"), LW(0), LW(1), LW(2))
+    USER_FUNC(spm::evt_npc::evt_npc_delete, PTR("me"))
+  END_IF()
   USER_FUNC(npcGetPlayerPos)
   USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("me"), LW(5), LW(6), LW(7))
   USER_FUNC(checkPosEqual)
@@ -1156,22 +1140,23 @@ EVT_BEGIN(mariounk7)
       USER_FUNC(adjustJumpSpeed)
       USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), LW(8))
       USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
-      USER_FUNC(npcFixAnims)
-      USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
     ELSE()
       USER_FUNC(npcFixAnims)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 2, 0)
       USER_FUNC(spm::evt_npc::evt_npc_walk_to, PTR("me"), LW(1), LW(3), 0, FLOAT(180.0), 4, 0, 0)
-      USER_FUNC(npcFixAnims)
-      USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
     END_IF()
+  ELSE()
+    USER_FUNC(spm::evt_npc::evt_npc_get_cur_anim, PTR("me"), LW(8))
+    IF_NOT_EQUAL(LW(8), 2)
+      USER_FUNC(spm::evt_npc::evt_npc_wait_anim_end, PTR("me"), 1)
+    END_IF()
+    USER_FUNC(npcFixAnims)
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
   END_IF()
-  USER_FUNC(checkPlayerDC)
-  IF_EQUAL(LW(10), 1)
-    USER_FUNC(spm::evt_npc::evt_npc_delete, PTR("me"))
-  END_IF()
-  WAIT_FRM(12)
-RETURN_FROM_CALL()
+  WAIT_FRM(1)
+  GOTO(0)
+  RETURN()
+EVT_END()
 
 EVT_BEGIN(registerToServer)
   USER_FUNC(spm::evt_msg::evt_msg_print, 1, PTR(startText1), 0, 0)
@@ -1220,8 +1205,8 @@ void patchScripts()
   evtpatch::hookEvt(transition_evt, 10, (spm::evtmgr::EvtScriptCode*)registerToServer);
   spm::map_data::MapData * he1_01_md = spm::map_data::mapDataPtr("he1_01");
   evtpatch::hookEvt(he1_01_md->initScript, 75, (spm::evtmgr::EvtScriptCode*)evt_connectToServer);
-  //evtpatch::hookEvtReplaceBlock(spm::npcdrv::npcEnemyTemplates[422].unkScript2, 1, (spm::evtmgr::EvtScriptCode*)mariounk2, 18);
-  evtpatch::hookEvtReplace(spm::npcdrv::npcEnemyTemplates[422].unkScript7, 8, (spm::evtmgr::EvtScriptCode*)mariounk7);
+  //evtpatch::hookEvtReplace(spm::npcdrv::npcEnemyTemplates[422].unkScript7, 8, (spm::evtmgr::EvtScriptCode*)mariounk7);
+  spm::npcdrv::npcEnemyTemplates[422].unkScript7 = mariounk7;
   evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript6, 1, (spm::evtmgr::EvtScriptCode*)mariounk6);
   evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript3, 71, (spm::evtmgr::EvtScriptCode*)mariounk3);
 }
