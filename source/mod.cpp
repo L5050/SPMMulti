@@ -1030,23 +1030,28 @@ namespace mod {
 
     // LW 1 2 and 3 are the positions of the player on the server, LW 5 6 and 7 are the positions of the player on the client
     // Needs to be cast to int and back with some math in order to truncate the value properly so that extremely minor differences dont effect the outcome of the function
-    f32 serverPosX = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[1]) * 100) / 100.0f;
-    f32 serverPosY = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[2]) * 100) / 100.0f;
-    f32 serverPosZ = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[3]) * 100) / 100.0f;
-    f32 clientPosX = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[5]) * 100) / 100.0f;
-    f32 clientPosY = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[6]) * 100) / 100.0f;
-    f32 clientPosZ = static_cast<int>(spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[7]) * 100) / 100.0f;
+    f32 serverPosX = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[1]) * 100) / 100.0f;
+    f32 serverPosY = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[2]) * 100) / 100.0f;
+    f32 serverPosZ = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[3]) * 100) / 100.0f;
+    f32 clientPosX = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[5]) * 100) / 100.0f;
+    f32 clientPosY = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[6]) * 100) / 100.0f;
+    f32 clientPosZ = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[7]) * 100) / 100.0f;
 
     wii::os::OSReport("PosX %f %f\n", serverPosX, clientPosX);
     wii::os::OSReport("PosY %f %f\n", serverPosY, clientPosY);
     wii::os::OSReport("PosZ %f %f\n", serverPosZ, clientPosZ);
 
-    if (serverPosX == clientPosX && serverPosY == clientPosY && serverPosZ == clientPosZ)
-    {
+    const f32 tolerance = 5.0;
+
+    // Check if the absolute differences are within the tolerance
+    if (abs(serverPosX - clientPosX) <= tolerance &&
+      abs(serverPosY - clientPosY) <= tolerance &&
+      abs(serverPosZ - clientPosZ) <= tolerance) {
       evtEntry -> lw[8] = 1;
     } else {
       evtEntry -> lw[8] = 0;
     }
+
     return 2;
   }
 
@@ -1089,6 +1094,17 @@ namespace mod {
     return 2;
   }
 
+s32 modWaitAnimEnd(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+
+  if (spm::evt_npc::evt_npc_wait_anim_end(evtEntry, firstRun) == 2) return 2;
+  checkPosEqual(evtEntry, firstRun);
+  if (evtEntry -> lw[8] == 0) {
+    return 2;
+  }
+  evtEntry -> lw[8] = 0;
+  return 0;
+}
+
 EVT_DECLARE_USER_FUNC(startWebhook, 0)
 EVT_DECLARE_USER_FUNC(startServerConnection, 0)
 EVT_DECLARE_USER_FUNC(checkForPlayersJoiningRoom, 0)
@@ -1104,6 +1120,7 @@ EVT_DECLARE_USER_FUNC(checkPosEqual, 0)
 EVT_DECLARE_USER_FUNC(npcDeletePlayer, 0)
 EVT_DECLARE_USER_FUNC(adjustJumpSpeed, 0)
 EVT_DECLARE_USER_FUNC(checkPlayerDC, 0)
+EVT_DECLARE_USER_FUNC(modWaitAnimEnd, 2)
 
 EVT_BEGIN(mariounk2)
   SET(LW(0), LW(0))
@@ -1147,11 +1164,18 @@ EVT_BEGIN(mariounk7)
     END_IF()
   ELSE()
     USER_FUNC(spm::evt_npc::evt_npc_get_cur_anim, PTR("me"), LW(8))
-    IF_NOT_EQUAL(LW(8), 2)
-      USER_FUNC(spm::evt_npc::evt_npc_wait_anim_end, PTR("me"), 1)
-    END_IF()
-    USER_FUNC(npcFixAnims)
-    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+    SWITCH(LW(8))
+      CASE_EQUAL(0)
+        USER_FUNC(npcFixAnims)
+        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+      CASE_EQUAL(2)
+        USER_FUNC(npcFixAnims)
+        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+      CASE_ETC()
+        USER_FUNC(spm::evt_npc::evt_npc_wait_anim_end, PTR("me"), 1)
+        USER_FUNC(npcFixAnims)
+        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+    END_SWITCH()
   END_IF()
   WAIT_FRM(1)
   GOTO(0)
