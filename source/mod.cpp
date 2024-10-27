@@ -180,7 +180,6 @@ namespace mod {
     s32 joiningClientsNum = 0;
     f32 joiningClientsPos[3];
     bool checkingForPlayers = true;
-    s32 checkForPlayersTimer = 0;
     bool sockIsCreated = false;
   /// @brief Sends a UDP packet to the server and waits for a response
   /// @param host The host (e.g., "192.168.1.1")
@@ -249,6 +248,8 @@ namespace mod {
   u8 stack[STACK_SIZE];
   wii::os::OSThread thread;
   s32 timerLimit = 0;
+  s32 checkForPlayersTimer = 0;
+  s32 updateStatsTimer = 0;
   bool leavingMap = false;
 
 
@@ -257,6 +258,7 @@ namespace mod {
     while (1) {
       timerLimit += 1;
       checkForPlayersTimer += 1;
+      updateStatsTimer += 1;
       if (timerLimit >= 3){
       timerLimit = 0;
       bool varCheck = true;
@@ -522,6 +524,34 @@ namespace mod {
           }
 
         }
+      }
+      if (updateStatsTimer >= 60) {
+        updateStatsTimer = 0;
+        u8 responseBuffer[1024];
+        const char postBuffer[1024];
+
+        spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
+        snprintf(postBuffer, sizeof(postBuffer), "updateStats.%d.%d.%d.%s.%d.%d.%d.%d.%d",
+          spm::spmario::gp -> gsw[2002],
+          spm::spmario::gp -> gsw[2000],
+          spm::spmario::gp -> gsw[2001],
+          spm::spmario::gp -> saveName,
+          pouch_ptr -> hp,
+          pouch_ptr -> maxHp,
+          pouch_ptr -> attack,
+          pouch_ptr -> xp,
+          spm::spmario::gp -> gsw0
+        );
+
+        s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+
+        // Ensure data was received
+        if (responseBytes > 0) {
+          wii::os::OSReport("Response Bytes: %d\n", responseBytes);
+        } else {
+          wii::os::OSReport("No response received or an error occurred\n");
+        }
+
       }
       wii::os::OSYieldThread();
       wii::vi::VIWaitForRetrace();
@@ -878,62 +908,6 @@ namespace mod {
     return 2;
   }
 
-  s32 getPlayerInfo(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
-
-    u8 responseBuffer[512];
-    const char postBuffer[1024];
-    //spm::mario_pouch::MarioPouchWork* pouch_ptr = spm::mario_pouch::pouchGetPtr();
-    snprintf(postBuffer, sizeof(postBuffer), "getPlayerInfo.%d.%d.%d.%s.%s.%d",
-      spm::spmario::gp -> gsw[2002],
-      spm::spmario::gp -> gsw[2000],
-      spm::spmario::gp -> gsw[2001],
-      spm::spmario::gp -> saveName,
-      spm::spmario::gp -> mapName,
-      joiningClients[evtEntry -> lw[4]]
-    );
-    s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
-
-    // Ensure data was received
-    if (responseBytes > 0) {
-        wii::os::OSReport("Response Bytes: %d\n", responseBytes);
-
-        // We expect 12 bytes (3 integers * 4 bytes per integer)
-        if (responseBytes == 12) {
-            s32 playerStats[3];  // Array to store the three integers (attack, maxHP, currentHP)
-
-            for (int i = 0; i < responseBytes; i += 4) {
-                // Extract 4 bytes for each integer in little-endian order
-                u8 byte1 = responseBuffer[i];
-                u8 byte2 = responseBuffer[i + 1];
-                u8 byte3 = responseBuffer[i + 2];
-                u8 byte4 = responseBuffer[i + 3];
-
-                // Combine the bytes into a 32-bit integer (little-endian)
-                s32 value = (byte4 << 24) | (byte3 << 16) | (byte2 << 8) | byte1;
-
-                // Assign the integer to the playerStats array
-                playerStats[i / 4] = value;
-
-                // Log the integer value
-                wii::os::OSReport("PlayerStat[%d]: %d\n", i / 4, value);
-            }
-            wii::os::OSReport("All player stats processed.\n");
-
-            // Player position MUST be stored in LW 1, 2, and 3 before this function is ran
-            addPlayer(joiningClients[evtEntry -> lw[4]], evtEntry -> lw[1], evtEntry -> lw[2], evtEntry -> lw[3], playerStats[0], playerStats[1], playerStats[2]);
-            evtEntry -> lw[5] = playerStats[0];
-            evtEntry -> lw[6] = playerStats[2];
-            evtEntry -> lw[7] = joiningClients[evtEntry -> lw[4]];
-        } else {
-            wii::os::OSReport("Unexpected response size: %d\n", responseBytes);
-        }
-    } else {
-        wii::os::OSReport("No response received or an error occurred.\n");
-    }
-
-    return 2;
-  }
-
   s32 npcFixAnims(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
     spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
     spm::npcdrv::func_801ca1a4(ownerNpc, &ownerNpc -> m_Anim);
@@ -1041,7 +1015,7 @@ namespace mod {
     wii::os::OSReport("PosY %f %f\n", serverPosY, clientPosY);
     wii::os::OSReport("PosZ %f %f\n", serverPosZ, clientPosZ);
 
-    const f32 tolerance = 5.0;
+    const f32 tolerance = 4.0;
 
     // Check if the absolute differences are within the tolerance
     if (abs(serverPosX - clientPosX) <= tolerance &&
@@ -1134,7 +1108,7 @@ EVT_BEGIN(mariounk6)
   USER_FUNC(npcDeletePlayer)
 RETURN_FROM_CALL()
 
-EVT_BEGIN(mariounk7)
+EVT_BEGIN(playerMainLogic)
   USER_FUNC(spm::evt_npc::evt_npc_set_move_mode, PTR("me"), 1)
   LBL(0)
   USER_FUNC(checkPlayerDC)
@@ -1186,6 +1160,7 @@ EVT_BEGIN(registerToServer)
   USER_FUNC(spm::evt_msg::evt_msg_print, 1, PTR(startText1), 0, 0)
   USER_FUNC(startWebhook)
   USER_FUNC(spm::evt_msg::evt_msg_print, 1, PTR(startText2), 0, 0)
+  USER_FUNC(spm::evt_seq::evt_seq_set_seq, spm::seqdrv::SEQ_MAPCHANGE, PTR("mac_02"), PTR("elv1"))
 RETURN_FROM_CALL()
 
 EVT_BEGIN(evt_connectToServer)
@@ -1229,10 +1204,14 @@ void patchScripts()
   evtpatch::hookEvt(transition_evt, 10, (spm::evtmgr::EvtScriptCode*)registerToServer);
   spm::map_data::MapData * he1_01_md = spm::map_data::mapDataPtr("he1_01");
   evtpatch::hookEvt(he1_01_md->initScript, 75, (spm::evtmgr::EvtScriptCode*)evt_connectToServer);
-  //evtpatch::hookEvtReplace(spm::npcdrv::npcEnemyTemplates[422].unkScript7, 8, (spm::evtmgr::EvtScriptCode*)mariounk7);
-  spm::npcdrv::npcEnemyTemplates[422].unkScript7 = mariounk7;
   evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript6, 1, (spm::evtmgr::EvtScriptCode*)mariounk6);
   evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript3, 71, (spm::evtmgr::EvtScriptCode*)mariounk3);
+}
+
+void patchMario()
+{
+  spm::npcdrv::npcEnemyTemplates[422].unkScript7 = playerMainLogic;
+  spm::npcdrv::npcEnemyTemplates[422].unkScript2 = playerMainLogic;
 }
 
 void main()
@@ -1247,10 +1226,10 @@ void main()
     titleScreenCustomTextPatch();
     patchScripts();
     patchMapInit();
+    patchMario();
     //patchGameExit();
     //spm::npcdrv::npcEnemyTemplates[422].unkScript2 = mariounk2;
     //tryChainload();
 }
 
 }
-//USER_FUNC(spm::evt_seq::evt_seq_set_seq, spm::seqdrv::SEQ_MAPCHANGE, PTR("mac_05"), PTR("elv1"))
