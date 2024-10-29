@@ -19,6 +19,9 @@ EVT_DECLARE(playerMainLogic)
 EVT_DECLARE(registerToServer)
 EVT_DECLARE(evt_connectToServer)
 EVT_DECLARE(evt_spawn_players)
+EVT_DECLARE(thunderCloud)
+EVT_DECLARE(spawnThunderCloud)
+EVT_DECLARE(insertNop)
 
 float getPositionXByClientID(int clientID);
 float getPositionYByClientID(int clientID);

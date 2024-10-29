@@ -18,6 +18,7 @@
 #include <spm/npcdrv.h>
 #include <spm/seq_mapchange.h>
 #include <spm/evt_seq.h>
+#include <spm/effdrv.h>
 #include <spm/evt_eff.h>
 #include <spm/evt_snd.h>
 #include <spm/evt_msg.h>
@@ -28,6 +29,7 @@
 #include <spm/seqdef.h>
 #include <spm/seq_game.h>
 #include <spm/spmario.h>
+#include <spm/evt_mario.h>
 #include <spm/mario.h>
 #include <spm/mario_pouch.h>
 #include <spm/system.h>
@@ -149,6 +151,31 @@ s32 modWaitAnimEnd(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   return 0;
 }
 
+s32 summonThunder(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  f32 npcX = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[0]);
+  f32 npcY = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[1]);
+  f32 npcZ = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[2]);
+  spm::effdrv::eff_item_thunder(npcX, npcY, npcZ, 0, 1, 1, 1, 0);
+  return 2;
+}
+
+s32 activateTC(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::evtEntry(thunderCloud, 0, 0);
+  return 2;
+}
+
+spm::npcdrv::NPCTribeAnimDef animsThunderCloud[] = {
+    {0, "S_1"}, // Standing (idle)
+    {1, "W_1"}, // Walking
+    {2, "R_1"}, // Running
+    {3, "A_1A"}, // Grinning?
+    {4, "A_2A"}, // Start charging thunder
+    {5, "A_2B"}, // Thunder charge loop
+    {6, "A_3A"}, // Release thunder
+    {-1, nullptr}
+};
+
 EVT_DECLARE_USER_FUNC(startWebhook, 0)
 EVT_DECLARE_USER_FUNC(startServerConnection, 0)
 EVT_DECLARE_USER_FUNC(checkConnection, 1)
@@ -162,6 +189,12 @@ EVT_DECLARE_USER_FUNC(npcDeletePlayer, 0)
 EVT_DECLARE_USER_FUNC(adjustJumpSpeed, 0)
 EVT_DECLARE_USER_FUNC(checkPlayerDC, 0)
 EVT_DECLARE_USER_FUNC(modWaitAnimEnd, 2)
+EVT_DECLARE_USER_FUNC(summonThunder, 3)
+EVT_DECLARE_USER_FUNC(activateTC, 0)
+
+EVT_BEGIN(insertNop)
+  SET(LW(0), LW(0))
+RETURN_FROM_CALL()
 
 EVT_BEGIN(mariounk3)
   SET(LW(1), 50)
@@ -255,6 +288,42 @@ EVT_BEGIN(evt_spawn_players)
     IF_EQUAL(LW(4), LW(0))
       DO_BREAK()
     END_IF()
+RETURN()
+EVT_END()
+
+EVT_BEGIN(spawnThunderCloud)
+    USER_FUNC(spm::evt_mario::evt_mario_key_off, 0)
+    SPAWN_CHARACTER("TC", "e_kmoon", animsThunderCloud)
+    USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
+    ADD(LW(2), 75)
+    USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 1, true)
+    USER_FUNC(activateTC)
+RETURN_FROM_CALL()
+
+EVT_BEGIN(thunderCloud)
+    DO(180)
+      USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
+      ADD(LW(2), 75)
+      USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
+      WAIT_FRM(1)
+    WHILE()
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 1, true)
+    DO(180)
+      USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
+      ADD(LW(2), 75)
+      USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
+      WAIT_FRM(1)
+    WHILE()
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 2, true)
+    DO(180)
+      USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
+      ADD(LW(2), 75)
+      USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
+      WAIT_FRM(1)
+    WHILE()
+    USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
+    USER_FUNC(summonThunder, LW(1), LW(2), LW(3))
 RETURN()
 EVT_END()
 

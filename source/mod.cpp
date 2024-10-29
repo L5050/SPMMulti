@@ -16,6 +16,7 @@
 #include "errno.h"
 
 #include <spm/setup_data.h>
+#include <spm/item_event_data.h>
 #include <spm/npcdrv.h>
 #include <spm/seq_mapchange.h>
 #include <spm/evt_seq.h>
@@ -749,8 +750,8 @@ namespace mod {
   seq_mapChangeInit = patch::hookFunction(spm::seq_mapchange::seq_mapChangeInit,
   [](spm::seqdrv::SeqWork *param_1)
       {
-          removeAllPlayers();
           seq_mapChangeInit(param_1);
+          removeAllPlayers();
       }
   );
 }
@@ -805,6 +806,13 @@ void patchMario()
   spm::npcdrv::npcTribes[453].killXp = 0;
 }
 
+void patchItems()
+{
+  evtpatch::hookEvtReplaceBlock(spm::item_event_data::itemEventDataTable[2].useScript, 1, (spm::evtmgr::EvtScriptCode*)insertNop, 61);
+  evtpatch::hookEvt(spm::item_event_data::itemEventDataTable[2].useScript, 62, (spm::evtmgr::EvtScriptCode*)spawnThunderCloud);
+  //spm::item_event_data::itemEventDataTable[2].useScript = spawnThunderCloud;
+}
+
 void main()
 {
     wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
@@ -820,6 +828,7 @@ void main()
     patchMario();
     //patchGameExit();
     //tryChainload();
+    patchItems();
 }
 
 }
