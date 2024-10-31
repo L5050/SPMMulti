@@ -20,6 +20,8 @@
 #include <spm/evt_seq.h>
 #include <spm/effdrv.h>
 #include <spm/evt_eff.h>
+#include <spm/evt_item.h>
+#include <spm/item_event_data.h>
 #include <spm/evt_snd.h>
 #include <spm/evt_msg.h>
 #include <spm/evtmgr.h>
@@ -89,6 +91,15 @@ namespace mod {
 
     const f32 tolerance = 4.0;
 
+    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+    if (abs(serverPosY - clientPosY) <= 0.5)
+    {
+      ownerNpc -> unitWork[15] = 0; //Run
+    } else {
+      ownerNpc -> unitWork[15] = 1; //Jump
+    }
+
+
     // Check if the absolute differences are within the tolerance
     if (abs(serverPosX - clientPosX) <= tolerance &&
       abs(serverPosY - clientPosY) <= tolerance &&
@@ -120,7 +131,7 @@ namespace mod {
 
   s32 adjustJumpSpeed(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
       const f32 maxHeight = 128.0;
-      const f32 maxSpeed = 400.0;
+      const f32 maxSpeed = 300.0;
       f32 height = evtEntry -> lw[8];
 
       if (height >= maxHeight) {
@@ -156,12 +167,26 @@ s32 summonThunder(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   f32 npcX = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[0]);
   f32 npcY = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[1]);
   f32 npcZ = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[2]);
-  spm::effdrv::eff_item_thunder(npcX, npcY, npcZ, 0, 1, 1, 1, 0);
+  //spm::effdrv::EffEntry* tcEntry = spm::effdrv::eff_item_thunder(0, 0, 0, 0, 0, 1, 0, 0);
+  //func_800a315c(tcEntry, -1, "TC");
   return 2;
 }
 
 s32 activateTC(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   spm::evtmgr::evtEntry(thunderCloud, 0, 0);
+  return 2;
+}
+
+s32 addCloudToList(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  char * tcName  = "TC";
+  spm::npcdrv::NPCEntry * tc = spm::npcdrv::npcNameToPtr(tcName);
+  spm::item_event_data::item_event_data_wp -> wp -> ItemNpcRef.npcId = tc -> id;
+  return 2;
+}
+
+s32 unknown_0x400(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+  ownerNpc -> m_Anim.scriptRotation.y = 0.0;
   return 2;
 }
 
@@ -191,9 +216,16 @@ EVT_DECLARE_USER_FUNC(checkPlayerDC, 0)
 EVT_DECLARE_USER_FUNC(modWaitAnimEnd, 2)
 EVT_DECLARE_USER_FUNC(summonThunder, 3)
 EVT_DECLARE_USER_FUNC(activateTC, 0)
+EVT_DECLARE_USER_FUNC(addCloudToList, 0)
+EVT_DECLARE_USER_FUNC(unknown_0x400, 0)
 
 EVT_BEGIN(insertNop)
   SET(LW(0), LW(0))
+RETURN_FROM_CALL()
+
+EVT_BEGIN(fixName)
+  SET(LW(2), 1)
+  USER_FUNC(addCloudToList)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(mariounk3)
@@ -206,6 +238,7 @@ RETURN_FROM_CALL()
 
 EVT_BEGIN(playerMainLogic)
   USER_FUNC(spm::evt_npc::evt_npc_set_move_mode, PTR("me"), 1)
+  //USER_FUNC(unknown_0x400)
   LBL(0)
   USER_FUNC(checkPlayerDC)
   IF_EQUAL(LW(10), 1)
@@ -218,15 +251,15 @@ EVT_BEGIN(playerMainLogic)
   USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("me"), LW(5), LW(6), LW(7))
   USER_FUNC(checkPosEqual)
   IF_EQUAL(LW(8), 0)
-    SET(LW(8), LW(2))
-    SUB(LW(8), LW(6))
-    IF_LARGE(LW(8), LW(6))
-      USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_JUMP1"), PTR("me"))
+    USER_FUNC(spm::evt_npc::evt_npc_get_unitwork, PTR("me"), 15, LW(8))
+    IF_EQUAL(LW(8), 1)
+      //USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_JUMP1"), PTR("me"))
       USER_FUNC(npcFixAnims)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0x19, 0)
       USER_FUNC(adjustJumpSpeed)
-      USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(10.0), LW(8))
-      USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
+      //USER_FUNC(spm::evt_npc::evt_npc_arc_to, PTR("me"), LW(1), LW(2), LW(3), 1000, 0, 45, 0, 0, 0)
+      USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(50.0), LW(8))
+      //USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
     ELSE()
       USER_FUNC(npcFixAnims)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 2, 0)
@@ -292,13 +325,18 @@ RETURN()
 EVT_END()
 
 EVT_BEGIN(spawnThunderCloud)
-    USER_FUNC(spm::evt_mario::evt_mario_key_off, 0)
+    //USER_FUNC(spm::evt_mario::evt_mario_key_off, 0)
     SPAWN_CHARACTER("TC", "e_kmoon", animsThunderCloud)
     USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
     ADD(LW(2), 75)
     USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
     USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 1, true)
     USER_FUNC(activateTC)
+RETURN()
+EVT_END()
+
+EVT_BEGIN(setResults)
+  SET(LW(10), 2)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(thunderCloud)
@@ -323,7 +361,9 @@ EVT_BEGIN(thunderCloud)
       WAIT_FRM(1)
     WHILE()
     USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-    USER_FUNC(summonThunder, LW(1), LW(2), LW(3))
+    RUN_CHILD_EVT(thunderRageScript)
+    //USER_FUNC(spm::evt_item::evt_item_spawn_thunder, 0, 0, 1, 1, 0)
+    //USER_FUNC(summonThunder, LW(1), LW(2), LW(3))
 RETURN()
 EVT_END()
 

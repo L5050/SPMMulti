@@ -22,6 +22,10 @@ EVT_DECLARE(evt_spawn_players)
 EVT_DECLARE(thunderCloud)
 EVT_DECLARE(spawnThunderCloud)
 EVT_DECLARE(insertNop)
+EVT_DECLARE(setResults)
+EVT_DECLARE(patchBoxes)
+EVT_DECLARE(fixName)
+extern spm::evtmgr::EvtScriptCode* thunderRageScript;
 
 float getPositionXByClientID(int clientID);
 float getPositionYByClientID(int clientID);

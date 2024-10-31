@@ -45,6 +45,7 @@ namespace mod {
   bool gIsDolphin;
   bool tfirstRun = false;
   bool isConnected = false;
+  spm::evtmgr::EvtScriptCode* thunderRageScript = spm::item_event_data::itemEventDataTable[2].useScript;
   u32 sockfd;
 
   struct Player {
@@ -232,7 +233,7 @@ namespace mod {
           return -1;
       }
 
-      wii::os::OSReport("UDP packet sent successfully\n");
+      //wii::os::OSReport("UDP packet sent successfully\n");
 
       // Wait for a response from the server
       s32 recvBytes = Mynet_recvfrom(sockfd, responseBuffer, responseBufferSize, 0, (struct sockaddr*)&recv_addr, &recv_addr_len);
@@ -242,7 +243,7 @@ namespace mod {
           return -1;
       }
 
-      wii::os::OSReport("UDP response received: %d bytes\n", recvBytes);
+      //wii::os::OSReport("UDP response received: %d bytes\n", recvBytes);
 
       return recvBytes;
   }
@@ -808,9 +809,14 @@ void patchMario()
 
 void patchItems()
 {
-  evtpatch::hookEvtReplaceBlock(spm::item_event_data::itemEventDataTable[2].useScript, 1, (spm::evtmgr::EvtScriptCode*)insertNop, 61);
-  evtpatch::hookEvt(spm::item_event_data::itemEventDataTable[2].useScript, 62, (spm::evtmgr::EvtScriptCode*)spawnThunderCloud);
-  //spm::item_event_data::itemEventDataTable[2].useScript = spawnThunderCloud;
+  //evtpatch::hookEvtReplaceBlock(spm::item_event_data::itemEventDataTable[2].useScript, 1, (spm::evtmgr::EvtScriptCode*)spawnThunderCloud, 62);
+  evtpatch::hookEvtReplaceBlock(thunderRageScript, 2, (spm::evtmgr::EvtScriptCode*)fixName, 33);
+  evtpatch::hookEvtReplace(thunderRageScript, 1, (spm::evtmgr::EvtScriptCode*)setResults);
+  //evtpatch::hookEvtReplace(thunderRageScript, 20, (spm::evtmgr::EvtScriptCode*)insertNop);
+  //evtpatch::hookEvtReplace(thunderRageScript, 33, (spm::evtmgr::EvtScriptCode*)fixName);
+  //evtpatch::hookEvtReplaceBlock(thunderRageScript, 15, (spm::evtmgr::EvtScriptCode*)insertNop, 21);
+  //evtpatch::hookEvt(spm::item_event_data::itemEventDataTable[2].useScript, 62, (spm::evtmgr::EvtScriptCode*)spawnThunderCloud);
+  spm::item_event_data::itemEventDataTable[2].useScript = spawnThunderCloud;
 }
 
 void main()
