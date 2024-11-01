@@ -4,15 +4,11 @@
 #include "netmemoryaccess.h"
 #include "network.h"
 #include "spmhttp.h"
-#include "core_json.h"
-#include "chainloader.h"
 #include "cutscene_helpers.h"
 #include "evt_cmd.h"
 #include "evtpatch.h"
 #include "exception.h"
 #include "evtdebug.h"
-#include "romfontexpand.h"
-#include "errno.h"
 
 #include <spm/setup_data.h>
 #include <spm/npcdrv.h>
@@ -24,6 +20,7 @@
 #include <spm/item_event_data.h>
 #include <spm/evt_snd.h>
 #include <spm/evt_msg.h>
+#include <spm/mario_status.h>
 #include <spm/evtmgr.h>
 #include <spm/map_data.h>
 #include <spm/fontmgr.h>
@@ -37,8 +34,6 @@
 #include <spm/system.h>
 #include <wii/os/OSError.h>
 #include <wii/os/OSThread.h>
-#include <wii/ipc.h>
-#include <wii/vi.h>
 #include <wii/os.h>
 #include <msl/stdio.h>
 #include <msl/string.h>
@@ -92,7 +87,7 @@ namespace mod {
     const f32 tolerance = 4.0;
 
     spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
-    if (abs(serverPosY - clientPosY) <= 0.5)
+    if (abs(serverPosY - clientPosY) <= 3.0)
     {
       ownerNpc -> unitWork[15] = 0; //Run
     } else {
@@ -190,6 +185,25 @@ s32 unknown_0x400(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   return 2;
 }
 
+s32 setScale(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  f32 scale = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[0]);
+
+  spm::mario::MarioWork* wp = spm::mario::marioGetPtr();
+  wp -> scale.x = scale;
+  wp -> scale.y = scale;
+  wp -> scale.z = scale;
+  return 2;
+}
+
+s32 evt_marioStatusApplyStatuses(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  s32 status = args[0];
+
+  spm::mario_status::marioStatusApplyStatuses(status, 2);
+  return 2;
+}
+
 spm::npcdrv::NPCTribeAnimDef animsThunderCloud[] = {
     {0, "S_1"}, // Standing (idle)
     {1, "W_1"}, // Walking
@@ -218,6 +232,8 @@ EVT_DECLARE_USER_FUNC(summonThunder, 3)
 EVT_DECLARE_USER_FUNC(activateTC, 0)
 EVT_DECLARE_USER_FUNC(addCloudToList, 0)
 EVT_DECLARE_USER_FUNC(unknown_0x400, 0)
+EVT_DECLARE_USER_FUNC(setScale, 1)
+EVT_DECLARE_USER_FUNC(evt_marioStatusApplyStatuses, 1)
 
 EVT_BEGIN(insertNop)
   SET(LW(0), LW(0))
@@ -257,8 +273,8 @@ EVT_BEGIN(playerMainLogic)
       USER_FUNC(npcFixAnims)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0x19, 0)
       USER_FUNC(adjustJumpSpeed)
-      //USER_FUNC(spm::evt_npc::evt_npc_arc_to, PTR("me"), LW(1), LW(2), LW(3), 1000, 0, 45, 0, 0, 0)
-      USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(50.0), LW(8))
+      USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(0.0), LW(8))
+      USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("me"), LW(1), LW(2), LW(3))
       //USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
     ELSE()
       USER_FUNC(npcFixAnims)
@@ -340,14 +356,31 @@ EVT_BEGIN(setResults)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(thunderCloud)
-    DO(180)
+    USER_FUNC(evt_marioStatusApplyStatuses, 0x80)
+    DO(150)
+      USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
+      ADD(LW(2), 75)
+      USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
+      WAIT_FRM(1)
+    WHILE()
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 5, true)
+    USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_I_BIRIBIRI1"), PTR("TC"))
+    DO(30)
       USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
       ADD(LW(2), 75)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
       WAIT_FRM(1)
     WHILE()
     USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 1, true)
-    DO(180)
+    DO(150)
+      USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
+      ADD(LW(2), 75)
+      USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
+      WAIT_FRM(1)
+    WHILE()
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 5, true)
+    USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_I_BIRIBIRI1"), PTR("TC"))
+    DO(30)
       USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
       ADD(LW(2), 75)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
@@ -360,8 +393,28 @@ EVT_BEGIN(thunderCloud)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
       WAIT_FRM(1)
     WHILE()
+    USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 5, true)
+    USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_I_BIRIBIRI1"), PTR("TC"))
+    DO(30)
+      USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
+      ADD(LW(2), 75)
+      USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
+      WAIT_FRM(1)
+    WHILE()
+    USER_FUNC(spm::evt_mario::evt_mario_key_off, 0)
     USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-    RUN_CHILD_EVT(thunderRageScript)
+    USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_I_THUNDER1"), PTR("TC"))
+    USER_FUNC(spm::evt_eff::evt_eff, 0, PTR("jigen_paralysis"), 0, LW(1), LW(2), LW(3), 0, 0, 0, 0, 0, 0, 0, 0)
+    USER_FUNC(setScale, FLOAT(0.5))
+    WAIT_MSEC(1000)
+    USER_FUNC(spm::evt_mario::evt_mario_key_on)
+    USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("TC"), LW(0), LW(1), LW(2))
+    USER_FUNC(spm::evt_eff::evt_eff, 0, PTR("dmen_warp"), 0, LW(0), LW(1), LW(2), 0, 0, 0, 0, 0, 0, 0, 0)
+    USER_FUNC(spm::evt_snd::evt_snd_sfxon_3d, PTR("SFX_BS_DMN_GOOUT1"), LW(0), LW(1), LW(2))
+    USER_FUNC(spm::evt_npc::evt_npc_delete, PTR("TC"))
+    WAIT_MSEC(15000)
+    USER_FUNC(setScale, FLOAT(1.0))
+    //RUN_CHILD_EVT(thunderRageScript)
     //USER_FUNC(spm::evt_item::evt_item_spawn_thunder, 0, 0, 1, 1, 0)
     //USER_FUNC(summonThunder, LW(1), LW(2), LW(3))
 RETURN()
