@@ -58,6 +58,7 @@ namespace mod {
     int currentHP;
     bool isDead;
     bool isDisconnected;
+    u16 motionId;
 
     void heal(int health) {
       currentHP += health;
@@ -89,6 +90,7 @@ namespace mod {
           newPlayer.currentHP = currentHP;
           newPlayer.isDead = (currentHP <= 0);
           newPlayer.isDisconnected = false;
+          newPlayer.motionId = 0x00;
 
           clients[numOfClients] = newPlayer;  // Add the new player to the array
           numOfClients++;  // Increment the number of clients
@@ -140,6 +142,23 @@ namespace mod {
           }
       }
       return false;
+  }
+
+  u16 getMotionIdByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].motionId;
+      }
+    }
+    return 0x00;
+  }
+
+  void setMotionIdByClientID(int clientID, u16 motionId) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        clients[i].motionId = motionId;
+      }
+    }
   }
 
   float getPositionXByClientID(int clientID) {
@@ -271,8 +290,16 @@ namespace mod {
         const char postBuffer[1024];
 
         spm::mario::MarioWork * mwpp = spm::mario::marioGetPtr();
+        spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
         wii::mtx::Vec3 pos = mwpp -> position;
-        snprintf(postBuffer, sizeof(postBuffer), "updatePosition.%d.%d.%d.%s.%d.%d.%d.%s",
+        u16 motionId = mwpp -> motionId;
+        if (mwpp -> posLockTimer > 0.0) {
+          motionId = 5000;
+        }
+        if (pouch_ptr -> hp == 0) {
+          motionId = 6000;
+        }
+        snprintf(postBuffer, sizeof(postBuffer), "updatePosition.%d.%d.%d.%s.%d.%d.%d.%s.%d",
             spm::spmario::gp->gsw[2002],
             spm::spmario::gp->gsw[2000],
             spm::spmario::gp->gsw[2001],
@@ -280,7 +307,8 @@ namespace mod {
             roundi(pos.x * 1000),
             roundi(pos.y * 1000),
             roundi(pos.z * 1000),
-            spm::spmario::gp->mapName
+            spm::spmario::gp->mapName,
+            motionId
         );
 
         s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
@@ -488,9 +516,12 @@ namespace mod {
           if (responseBytes > 0) {
               wii::os::OSReport("Response Bytes: %d\n", responseBytes);
               f32 posArray[3];
-              // Ensure we received 12 bytes (3 floats * 4 bytes per float)
-              if (responseBytes == 12) {
-                  for (int i = 0; i < responseBytes; i += 4) {
+              u16 motionId;
+
+              // Ensure we received 14 bytes (3 floats * 4 bytes per float + 1 u16 * 2 bytes)
+              if (responseBytes == 14) {
+                  // Extract the position floats (first 12 bytes)
+                  for (int i = 0; i < 12; i += 4) {
                       // Extract 4 bytes for each float in little-endian order
                       u8 byte1 = responseBuffer[i];
                       u8 byte2 = responseBuffer[i + 1];
@@ -505,21 +536,33 @@ namespace mod {
                       memcpy(&floatValue, &rawBytes, sizeof(f32));  // Copy raw bytes into float
 
                       // Log and assign the float value
-                      posArray[(i / 4)] = floatValue;  // Store in lw[] array
+                      posArray[(i / 4)] = floatValue;  // Store in posArray
                       wii::os::OSReport("PlayerPos: %f\n", floatValue);  // Report the float value
                   }
 
-                  wii::os::OSReport("Number of Players Processede: %d\n", responseBytes / sizeof(f32));
+                  // Extract the motionId (last 2 bytes, bytes 12 and 13)
+                  u8 byteMotion1 = responseBuffer[12];
+                  u8 byteMotion2 = responseBuffer[13];
+
+                  // Combine the bytes into a 16-bit integer (little-endian)
+                  motionId = (byteMotion2 << 8) | byteMotion1;
+                  clients[i].motionId = motionId;
+
+                  // Update client position
+                  clients[i].positionX = posArray[0];
+                  clients[i].positionY = posArray[1];
+                  clients[i].positionZ = posArray[2];
+
+                  // Handle disconnection condition based on position
+                  if (posArray[0] == 0.0f && posArray[1] == 0.0f && posArray[2] == 0.0f) {
+                      clients[i].isDisconnected = true;
+                      removePlayer(clients[i].clientID);
+                  }
+
+                  wii::os::OSReport("Number of Players Processed: %d\n", responseBytes / sizeof(f32));
               } else {
-                  wii::os::OSReport("Incorrect number of bytes received. Expected 12.\n");
+                  wii::os::OSReport("Incorrect number of bytes received. Expected 14.\n");
                   clients[i].isDisconnected = true;
-              }
-              clients[i].positionX = posArray[0];
-              clients[i].positionY = posArray[1];
-              clients[i].positionZ = posArray[2];
-              if (posArray[0] == 0.0 && posArray[1] == 0.0 && posArray[2] == 0.0) {
-                clients[i].isDisconnected = true;
-                removePlayer(clients[i].clientID);
               }
           } else {
               wii::os::OSReport("No response received or an error occurredeww\n");
@@ -789,6 +832,8 @@ namespace mod {
   "Connection successful!\n"
   "<k>";
 
+
+
 void patchScripts()
 {
   spm::map_data::MapData * an1_01_md = spm::map_data::mapDataPtr("aa1_01");
@@ -805,6 +850,7 @@ void patchMario()
   spm::npcdrv::npcEnemyTemplates[422].unkScript7 = playerMainLogic;
   spm::npcdrv::npcEnemyTemplates[422].unkScript2 = playerMainLogic;
   spm::npcdrv::npcTribes[453].killXp = 0;
+  spm::npcdrv::npcTribes[453].animDefs[5] = {6, "mario_D_1"};
 }
 
 void patchItems()

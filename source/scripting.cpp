@@ -87,7 +87,7 @@ namespace mod {
     const f32 tolerance = 4.0;
 
     spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
-    if (abs(serverPosY - clientPosY) <= 3.0)
+    if (abs(serverPosY - clientPosY) <= 0.2)
     {
       ownerNpc -> unitWork[15] = 0; //Run
     } else {
@@ -126,7 +126,7 @@ namespace mod {
 
   s32 adjustJumpSpeed(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
       const f32 maxHeight = 128.0;
-      const f32 maxSpeed = 300.0;
+      const f32 maxSpeed = 400.0;
       f32 height = evtEntry -> lw[8];
 
       if (height >= maxHeight) {
@@ -135,6 +135,9 @@ namespace mod {
 
       // Otherwise, calculate speed proportionally to height
       f32 speed = (height / maxHeight) * maxSpeed;
+      if (speed < 200.0){
+        speed = 200.0;
+      }
       evtEntry -> lw[8] = speed;
       return 2;
 }
@@ -179,12 +182,6 @@ s32 addCloudToList(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   return 2;
 }
 
-s32 unknown_0x400(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
-  spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
-  ownerNpc -> m_Anim.scriptRotation.y = 0.0;
-  return 2;
-}
-
 s32 setScale(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
   f32 scale = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[0]);
@@ -196,11 +193,37 @@ s32 setScale(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   return 2;
 }
 
+s32 setGravity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+  f32 gravity = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[0]);
+
+  ownerNpc -> gravity = gravity;
+  return 2;
+}
+
 s32 evt_marioStatusApplyStatuses(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
   s32 status = args[0];
 
   spm::mario_status::marioStatusApplyStatuses(status, 2);
+  return 2;
+}
+
+s32 npcGetPlayerMot(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+
+  spm::evtmgr_cmd::evtSetValue(evtEntry, args[0], getMotionIdByClientID(ownerNpc -> unitWork[0]));
+  return 2;
+}
+
+s32 npcSetPlayerMot(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+
+  u16 motionId = args[0];
+  setMotionIdByClientID(ownerNpc -> unitWork[0], motionId);
   return 2;
 }
 
@@ -221,6 +244,8 @@ EVT_DECLARE_USER_FUNC(checkConnection, 1)
 EVT_DECLARE_USER_FUNC(returnPos, 2)
 EVT_DECLARE_USER_FUNC(updateServerPos, 0)
 EVT_DECLARE_USER_FUNC(npcGetPlayerPos, 0)
+EVT_DECLARE_USER_FUNC(npcGetPlayerMot, 1)
+EVT_DECLARE_USER_FUNC(npcSetPlayerMot, 1)
 EVT_DECLARE_USER_FUNC(npcFixAnims, 0)
 EVT_DECLARE_USER_FUNC(npcGrabName, 0)
 EVT_DECLARE_USER_FUNC(checkPosEqual, 0)
@@ -231,8 +256,8 @@ EVT_DECLARE_USER_FUNC(modWaitAnimEnd, 2)
 EVT_DECLARE_USER_FUNC(summonThunder, 3)
 EVT_DECLARE_USER_FUNC(activateTC, 0)
 EVT_DECLARE_USER_FUNC(addCloudToList, 0)
-EVT_DECLARE_USER_FUNC(unknown_0x400, 0)
 EVT_DECLARE_USER_FUNC(setScale, 1)
+EVT_DECLARE_USER_FUNC(setGravity, 1)
 EVT_DECLARE_USER_FUNC(evt_marioStatusApplyStatuses, 1)
 
 EVT_BEGIN(insertNop)
@@ -254,7 +279,7 @@ RETURN_FROM_CALL()
 
 EVT_BEGIN(playerMainLogic)
   USER_FUNC(spm::evt_npc::evt_npc_set_move_mode, PTR("me"), 1)
-  //USER_FUNC(unknown_0x400)
+  USER_FUNC(setGravity, FLOAT(0.0))
   LBL(0)
   USER_FUNC(checkPlayerDC)
   IF_EQUAL(LW(10), 1)
@@ -269,32 +294,58 @@ EVT_BEGIN(playerMainLogic)
   IF_EQUAL(LW(8), 0)
     USER_FUNC(spm::evt_npc::evt_npc_get_unitwork, PTR("me"), 15, LW(8))
     IF_EQUAL(LW(8), 1)
-      //USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_JUMP1"), PTR("me"))
+      USER_FUNC(npcGetPlayerMot, LW(9))
+      IF_NOT_EQUAL(LW(9), 6000)
       USER_FUNC(npcFixAnims)
       USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0x19, 0)
+      ELSE()
+        USER_FUNC(npcFixAnims)
+        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 6, 0)
+      END_IF()
+      SET(LW(8), LW(2))
+      SUB(LW(8), LW(6))
       USER_FUNC(adjustJumpSpeed)
       USER_FUNC(spm::evt_npc::evt_npc_jump_to, PTR("me"), LW(1), LW(2), LW(3), FLOAT(0.0), LW(8))
-      USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("me"), LW(1), LW(2), LW(3))
       //USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_P_MARIO_LAND1"), PTR("me"))
     ELSE()
-      USER_FUNC(npcFixAnims)
-      USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 2, 0)
+      USER_FUNC(npcGetPlayerMot, LW(9))
+      IF_NOT_EQUAL(LW(9), 0x03)
+      IF_NOT_EQUAL(LW(9), 6000)
+        USER_FUNC(npcFixAnims)
+        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 2, 0)
+      ELSE()
+        USER_FUNC(npcFixAnims)
+        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 6, 0)
+      END_IF()
+      END_IF()
       USER_FUNC(spm::evt_npc::evt_npc_walk_to, PTR("me"), LW(1), LW(3), 0, FLOAT(180.0), 4, 0, 0)
     END_IF()
   ELSE()
     USER_FUNC(spm::evt_npc::evt_npc_get_cur_anim, PTR("me"), LW(8))
-    SWITCH(LW(8))
-      CASE_EQUAL(0)
+    USER_FUNC(npcGetPlayerMot, LW(9))
+    IF_EQUAL(LW(9), 0x00)
+      SWITCH(LW(8))
+        CASE_EQUAL(0)
+          USER_FUNC(npcFixAnims)
+          USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+        CASE_EQUAL(2)
+          USER_FUNC(npcFixAnims)
+          USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+        CASE_ETC()
+          USER_FUNC(spm::evt_npc::evt_npc_wait_anim_end, PTR("me"), 1)
+          USER_FUNC(npcFixAnims)
+          USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
+      END_SWITCH()
+    ELSE()
+      IF_EQUAL(LW(9), 5000)
         USER_FUNC(npcFixAnims)
-        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
-      CASE_EQUAL(2)
+        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 22, 0)
+      END_IF()
+      IF_EQUAL(LW(9), 6000)
         USER_FUNC(npcFixAnims)
-        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
-      CASE_ETC()
-        USER_FUNC(spm::evt_npc::evt_npc_wait_anim_end, PTR("me"), 1)
-        USER_FUNC(npcFixAnims)
-        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 0, 0)
-    END_SWITCH()
+        USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("me"), 6, 0)
+      END_IF()
+    END_IF()
   END_IF()
   WAIT_FRM(1)
   GOTO(0)
@@ -414,9 +465,6 @@ EVT_BEGIN(thunderCloud)
     USER_FUNC(spm::evt_npc::evt_npc_delete, PTR("TC"))
     WAIT_MSEC(15000)
     USER_FUNC(setScale, FLOAT(1.0))
-    //RUN_CHILD_EVT(thunderRageScript)
-    //USER_FUNC(spm::evt_item::evt_item_spawn_thunder, 0, 0, 1, 1, 0)
-    //USER_FUNC(summonThunder, LW(1), LW(2), LW(3))
 RETURN()
 EVT_END()
 

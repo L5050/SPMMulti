@@ -27,6 +27,8 @@ EVT_DECLARE(patchBoxes)
 EVT_DECLARE(fixName)
 extern spm::evtmgr::EvtScriptCode* thunderRageScript;
 
+u16 getMotionIdByClientID(int clientID);
+void setMotionIdByClientID(int clientID, u16 motionId);
 float getPositionXByClientID(int clientID);
 float getPositionYByClientID(int clientID);
 bool getDCByClientID(int clientID);
