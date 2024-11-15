@@ -45,6 +45,7 @@ namespace mod {
   bool gIsDolphin;
   bool tfirstRun = false;
   bool isConnected = false;
+  bool shocked = false;
   spm::evtmgr::EvtScriptCode* thunderRageScript = spm::item_event_data::itemEventDataTable[2].useScript;
   u32 sockfd;
 
@@ -53,6 +54,9 @@ namespace mod {
     float positionX;
     float positionY;
     float positionZ;
+    float velocityX = 0.0f;
+    float velocityY = 0.0f;
+    float velocityZ = 0.0f;
     int attack;
     int maxHP;
     int currentHP;
@@ -528,7 +532,7 @@ namespace mod {
                       u8 byte3 = responseBuffer[i + 2];
                       u8 byte4 = responseBuffer[i + 3];
 
-                      // Combine the bytes into a 32-bit integer (little-endian)
+                      // Combine the bytes into a 32-bit integer
                       u32 rawBytes = (byte4 << 24) | (byte3 << 16) | (byte2 << 8) | byte1;
 
                       // Interpret the 32-bit integer as a float
@@ -544,11 +548,16 @@ namespace mod {
                   u8 byteMotion1 = responseBuffer[12];
                   u8 byteMotion2 = responseBuffer[13];
 
-                  // Combine the bytes into a 16-bit integer (little-endian)
+                  // Combine the bytes into a 16-bit integer
                   motionId = (byteMotion2 << 8) | byteMotion1;
                   clients[i].motionId = motionId;
 
-                  // Update client position
+                  // Update client position and velocity
+                  if (clients[i].positionX != posArray[0] && clients[i].positionY != posArray[1] && clients[i].positionZ != posArray[2]) {
+                    clients[i].velocityX = posArray[0] - clients[i].positionX;
+                    clients[i].velocityY = posArray[1] - clients[i].positionY;
+                    clients[i].velocityZ = posArray[2] - clients[i].positionZ;
+                  }
                   clients[i].positionX = posArray[0];
                   clients[i].positionY = posArray[1];
                   clients[i].positionZ = posArray[2];
@@ -759,24 +768,27 @@ namespace mod {
     return mystatus;
   }
 
-  s32 npcGetPlayerPos(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
-    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
-    s32 leClient = ownerNpc -> unitWork[0];
-
-    evtEntry->lw[1] = getPositionXByClientID(leClient);
-    evtEntry->lw[2] = getPositionYByClientID(leClient);
-    evtEntry->lw[3] = getPositionZByClientID(leClient);
-    return 2;
-  }
+  /*
+      General mod functions
+  */
 
   s32 npcFixAnims(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
     spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
     spm::npcdrv::func_801ca1a4(ownerNpc, &ownerNpc -> m_Anim);
     return 2;
 }
-  /*
-      General mod functions
-  */
+
+  s32 npcGetPlayerVelocity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+    spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+    s32 leClient = ownerNpc -> unitWork[0];
+
+
+    spm::evtmgr_cmd::evtSetFloat(evtEntry, args[0], clients[leClient].velocityX);
+    spm::evtmgr_cmd::evtSetFloat(evtEntry, args[1], clients[leClient].velocityY);
+    spm::evtmgr_cmd::evtSetFloat(evtEntry, args[2], clients[leClient].velocityY);
+    return 2;
+  }
 
   void (*seq_gameExit)(spm::seqdrv::SeqWork *param_1);
   void patchGameExit() {
@@ -850,6 +862,11 @@ void patchMario()
   spm::npcdrv::npcEnemyTemplates[422].unkScript7 = playerMainLogic;
   spm::npcdrv::npcEnemyTemplates[422].unkScript2 = playerMainLogic;
   spm::npcdrv::npcTribes[453].killXp = 0;
+  spm::npcdrv::npcTribes[453].stylishXp = 0;
+  spm::npcdrv::npcTribes[453].voltShroomStunTime = 0;
+  spm::npcdrv::npcTribes[453].stopWatchStunTime = 0;
+  spm::npcdrv::npcTribes[453].iceStormStunTime = 0;
+  spm::npcdrv::npcTribes[453].sleepySheepStunTime = 0;
   spm::npcdrv::npcTribes[453].animDefs[5] = {6, "mario_D_1"};
 }
 

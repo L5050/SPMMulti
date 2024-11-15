@@ -135,8 +135,8 @@ namespace mod {
 
       // Otherwise, calculate speed proportionally to height
       f32 speed = (height / maxHeight) * maxSpeed;
-      if (speed < 200.0){
-        speed = 200.0;
+      if (speed < 100.0){
+        speed = 100.0;
       }
       evtEntry -> lw[8] = speed;
       return 2;
@@ -162,11 +162,15 @@ s32 modWaitAnimEnd(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
 
 s32 summonThunder(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
-  f32 npcX = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[0]);
-  f32 npcY = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[1]);
-  f32 npcZ = spm::evtmgr_cmd::evtGetFloat(evtEntry, args[2]);
-  //spm::effdrv::EffEntry* tcEntry = spm::effdrv::eff_item_thunder(0, 0, 0, 0, 0, 1, 0, 0);
-  //func_800a315c(tcEntry, -1, "TC");
+  shocked = true;
+  spm::effdrv::func_800a82c0(2);
+  return 2;
+}
+
+s32 summonElectricity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  spm::effdrv::func_800a82c0(0);
+  spm::effdrv::func_800a82c0(1);
   return 2;
 }
 
@@ -205,8 +209,18 @@ s32 setGravity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
 s32 evt_marioStatusApplyStatuses(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
   s32 status = args[0];
+  spm::effdrv::func_800a82c0(1);
+  //spm::mario_status::marioStatusApplyStatuses(status, 2);
+  return 2;
+}
 
-  spm::mario_status::marioStatusApplyStatuses(status, 2);
+s32 reduce_switch_depth(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  s32 depth_reduction = args[0];
+
+  s32 curDepth = evtEntry -> switchDepth;
+  evtEntry -> switchStates[curDepth] = 0;
+  evtEntry -> switchDepth -= depth_reduction;
   return 2;
 }
 
@@ -224,6 +238,16 @@ s32 npcSetPlayerMot(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
 
   u16 motionId = args[0];
   setMotionIdByClientID(ownerNpc -> unitWork[0], motionId);
+  return 2;
+}
+
+s32 npcGetPlayerPos(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+  s32 leClient = ownerNpc -> unitWork[0];
+
+  evtEntry->lw[1] = getPositionXByClientID(leClient);
+  evtEntry->lw[2] = getPositionYByClientID(leClient);
+  evtEntry->lw[3] = getPositionZByClientID(leClient);
   return 2;
 }
 
@@ -253,12 +277,15 @@ EVT_DECLARE_USER_FUNC(npcDeletePlayer, 0)
 EVT_DECLARE_USER_FUNC(adjustJumpSpeed, 0)
 EVT_DECLARE_USER_FUNC(checkPlayerDC, 0)
 EVT_DECLARE_USER_FUNC(modWaitAnimEnd, 2)
-EVT_DECLARE_USER_FUNC(summonThunder, 3)
+EVT_DECLARE_USER_FUNC(summonThunder, 0)
+EVT_DECLARE_USER_FUNC(summonElectricity, 0)
 EVT_DECLARE_USER_FUNC(activateTC, 0)
 EVT_DECLARE_USER_FUNC(addCloudToList, 0)
+EVT_DECLARE_USER_FUNC(reduce_switch_depth, 1)
 EVT_DECLARE_USER_FUNC(setScale, 1)
 EVT_DECLARE_USER_FUNC(setGravity, 1)
 EVT_DECLARE_USER_FUNC(evt_marioStatusApplyStatuses, 1)
+EVT_DECLARE_USER_FUNC(npcGetPlayerVelocity, 3)
 
 EVT_BEGIN(insertNop)
   SET(LW(0), LW(0))
@@ -292,6 +319,13 @@ EVT_BEGIN(playerMainLogic)
   USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("me"), LW(5), LW(6), LW(7))
   USER_FUNC(checkPosEqual)
   IF_EQUAL(LW(8), 0)
+    IF_EQUAL(LW(8), 1)
+      LBL(25)
+      USER_FUNC(npcGetPlayerVelocity, LW(5), LW(6), LW(7))
+      ADD(LW(1), LW(5))
+      ADD(LW(2), LW(6))
+      ADD(LW(3), LW(7))
+    END_IF()
     USER_FUNC(spm::evt_npc::evt_npc_get_unitwork, PTR("me"), 15, LW(8))
     IF_EQUAL(LW(8), 1)
       USER_FUNC(npcGetPlayerMot, LW(9))
@@ -323,6 +357,14 @@ EVT_BEGIN(playerMainLogic)
   ELSE()
     USER_FUNC(spm::evt_npc::evt_npc_get_cur_anim, PTR("me"), LW(8))
     USER_FUNC(npcGetPlayerMot, LW(9))
+    SWITCH(LW(9))
+      CASE_OR(0x01)
+      CASE_OR(0x02)
+      CASE_OR(0x03)
+        USER_FUNC(reduce_switch_depth, 1) // Gotos dont manually reduce the switch depth so we have to do it ourself to prevent a buffer overflow
+        GOTO(25) // If the npc is in a movement motionId but has the exact same position then the server is lagging and we need to compensate
+      CASE_END()
+    END_SWITCH()
     IF_EQUAL(LW(9), 0x00)
       SWITCH(LW(8))
         CASE_EQUAL(0)
@@ -395,7 +437,7 @@ EVT_BEGIN(spawnThunderCloud)
     //USER_FUNC(spm::evt_mario::evt_mario_key_off, 0)
     SPAWN_CHARACTER("TC", "e_kmoon", animsThunderCloud)
     USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-    ADD(LW(2), 75)
+    ADD(LW(2), 50)
     USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
     USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 1, true)
     USER_FUNC(activateTC)
@@ -407,10 +449,10 @@ EVT_BEGIN(setResults)
 RETURN_FROM_CALL()
 
 EVT_BEGIN(thunderCloud)
-    USER_FUNC(evt_marioStatusApplyStatuses, 0x80)
+    //USER_FUNC(evt_marioStatusApplyStatuses, 0x80)
     DO(150)
       USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-      ADD(LW(2), 75)
+      ADD(LW(2), 50)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
       WAIT_FRM(1)
     WHILE()
@@ -418,14 +460,14 @@ EVT_BEGIN(thunderCloud)
     USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_I_BIRIBIRI1"), PTR("TC"))
     DO(30)
       USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-      ADD(LW(2), 75)
+      ADD(LW(2), 50)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
       WAIT_FRM(1)
     WHILE()
     USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 1, true)
     DO(150)
       USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-      ADD(LW(2), 75)
+      ADD(LW(2), 50)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
       WAIT_FRM(1)
     WHILE()
@@ -433,14 +475,14 @@ EVT_BEGIN(thunderCloud)
     USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_I_BIRIBIRI1"), PTR("TC"))
     DO(30)
       USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-      ADD(LW(2), 75)
+      ADD(LW(2), 50)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
       WAIT_FRM(1)
     WHILE()
     USER_FUNC(spm::evt_npc::evt_npc_set_anim, PTR("TC"), 2, true)
     DO(180)
       USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-      ADD(LW(2), 75)
+      ADD(LW(2), 50)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
       WAIT_FRM(1)
     WHILE()
@@ -448,14 +490,16 @@ EVT_BEGIN(thunderCloud)
     USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_I_BIRIBIRI1"), PTR("TC"))
     DO(30)
       USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
-      ADD(LW(2), 75)
+      ADD(LW(2), 50)
       USER_FUNC(spm::evt_npc::evt_npc_set_position, PTR("TC"), LW(1), LW(2), LW(3))
       WAIT_FRM(1)
     WHILE()
     USER_FUNC(spm::evt_mario::evt_mario_key_off, 0)
     USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(1), LW(2), LW(3))
     USER_FUNC(spm::evt_snd::evt_snd_sfxon_npc, PTR("SFX_I_THUNDER1"), PTR("TC"))
-    USER_FUNC(spm::evt_eff::evt_eff, 0, PTR("jigen_paralysis"), 0, LW(1), LW(2), LW(3), 0, 0, 0, 0, 0, 0, 0, 0)
+    USER_FUNC(summonThunder)
+    USER_FUNC(summonElectricity)
+    //USER_FUNC(spm::evt_eff::evt_eff, 0, PTR("jigen_paralysis"), 0, LW(1), LW(2), LW(3), 0, 0, 0, 0, 0, 0, 0, 0)
     USER_FUNC(setScale, FLOAT(0.5))
     WAIT_MSEC(1000)
     USER_FUNC(spm::evt_mario::evt_mario_key_on)

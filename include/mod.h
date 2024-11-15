@@ -8,6 +8,7 @@ namespace mod {
 
 extern bool gIsDolphin;
 extern bool isConnected;
+extern bool shocked;
 extern const char startText1[];
 extern const char startText2[];
 extern const char connectionText1[];
@@ -27,10 +28,12 @@ EVT_DECLARE(patchBoxes)
 EVT_DECLARE(fixName)
 extern spm::evtmgr::EvtScriptCode* thunderRageScript;
 
+s32 npcCheckPlayerVelocity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun);
 u16 getMotionIdByClientID(int clientID);
 void setMotionIdByClientID(int clientID, u16 motionId);
 float getPositionXByClientID(int clientID);
 float getPositionYByClientID(int clientID);
+float getPositionZByClientID(int clientID);
 bool getDCByClientID(int clientID);
 void removePlayer(int clientID);
 HTTPStatus_t registerPlayer();
