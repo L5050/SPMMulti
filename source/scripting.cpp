@@ -251,6 +251,18 @@ s32 npcGetPlayerPos(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   return 2;
 }
 
+s32 npcGetPlayerVelocity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+  s32 leClient = ownerNpc -> unitWork[0];
+
+
+  spm::evtmgr_cmd::evtSetFloat(evtEntry, args[0], getVelocityXByClientID(leClient));
+  spm::evtmgr_cmd::evtSetFloat(evtEntry, args[1], getVelocityYByClientID(leClient));
+  spm::evtmgr_cmd::evtSetFloat(evtEntry, args[2], getVelocityZByClientID(leClient));
+  return 2;
+}
+
 spm::npcdrv::NPCTribeAnimDef animsThunderCloud[] = {
     {0, "S_1"}, // Standing (idle)
     {1, "W_1"}, // Walking

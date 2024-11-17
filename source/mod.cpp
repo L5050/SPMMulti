@@ -192,6 +192,33 @@ namespace mod {
     return -1.0;
   }
 
+  float getVelocityXByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].velocityX;
+      }
+    }
+    return -1.0;
+  }
+
+  float getVelocityYByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].velocityY;
+      }
+    }
+    return -1.0;
+  }
+
+  float getVelocityZByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].velocityZ;
+      }
+    }
+    return -1.0;
+  }
+
   bool getDCByClientID(int clientID) {
     for (int i = 0; i < numOfClients; ++i) {
       if (clients[i].clientID == clientID) {
@@ -777,18 +804,6 @@ namespace mod {
     spm::npcdrv::func_801ca1a4(ownerNpc, &ownerNpc -> m_Anim);
     return 2;
 }
-
-  s32 npcGetPlayerVelocity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
-    spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
-    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
-    s32 leClient = ownerNpc -> unitWork[0];
-
-
-    spm::evtmgr_cmd::evtSetFloat(evtEntry, args[0], clients[leClient].velocityX);
-    spm::evtmgr_cmd::evtSetFloat(evtEntry, args[1], clients[leClient].velocityY);
-    spm::evtmgr_cmd::evtSetFloat(evtEntry, args[2], clients[leClient].velocityY);
-    return 2;
-  }
 
   void (*seq_gameExit)(spm::seqdrv::SeqWork *param_1);
   void patchGameExit() {
