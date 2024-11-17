@@ -70,7 +70,11 @@ namespace mod {
   }
 
   s32 checkPosEqual(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
-
+    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+    s32 leClient = ownerNpc -> unitWork[0];
+    bool isPlayerLaggingX = false;
+    bool isPlayerLaggingY = false;
+    bool isPlayerLaggingZ = false;
     // LW 1 2 and 3 are the positions of the player on the server, LW 5 6 and 7 are the positions of the player on the client
     // Needs to be cast to int and back with some math in order to truncate the value properly so that extremely minor differences dont effect the outcome of the function
     f32 serverPosX = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[1]) * 100) / 100.0f;
@@ -80,13 +84,28 @@ namespace mod {
     f32 clientPosY = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[6]) * 100) / 100.0f;
     f32 clientPosZ = static_cast < int > (spm::evtmgr_cmd::evtGetFloat(evtEntry, evtEntry -> lw[7]) * 100) / 100.0f;
 
+    if (evtEntry -> lw[1] == getLastPositionXByClientID(leClient)) {
+      isPlayerLaggingX = true;
+    } else {
+      setLastPositionXByClientID(leClient, evtEntry -> lw[1]);
+    }
+    if (evtEntry -> lw[2] == getLastPositionYByClientID(leClient)) {
+      isPlayerLaggingY = true;
+    } else {
+      setLastPositionYByClientID(leClient, evtEntry -> lw[1]);
+    }
+    if (evtEntry -> lw[3] == getLastPositionZByClientID(leClient)) {
+      isPlayerLaggingZ = true;
+    } else {
+      setLastPositionZByClientID(leClient, evtEntry -> lw[1]);
+    }
+
     wii::os::OSReport("PosX %f %f\n", serverPosX, clientPosX);
     wii::os::OSReport("PosY %f %f\n", serverPosY, clientPosY);
     wii::os::OSReport("PosZ %f %f\n", serverPosZ, clientPosZ);
 
     const f32 tolerance = 4.0;
 
-    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
     if (abs(serverPosY - clientPosY) <= 0.2)
     {
       ownerNpc -> unitWork[15] = 0; //Run
@@ -102,6 +121,10 @@ namespace mod {
       evtEntry -> lw[8] = 1;
     } else {
       evtEntry -> lw[8] = 0;
+    }
+
+    if (isPlayerLaggingX == true && isPlayerLaggingY == true && isPlayerLaggingZ == true) {
+      evtEntry -> lw[8] = 1;
     }
 
     return 2;
@@ -142,12 +165,12 @@ namespace mod {
       return 2;
 }
 
-  s32 npcGrabName(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
-    spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
+s32 npcGrabName(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
+  spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
 
-    spm::evtmgr_cmd::evtSetValue(evtEntry, evtEntry -> lw[10], (int)ownerNpc -> name);
-    return 2;
-  }
+  spm::evtmgr_cmd::evtSetValue(evtEntry, evtEntry -> lw[10], (int)ownerNpc -> name);
+  return 2;
+}
 
 s32 modWaitAnimEnd(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
 
@@ -161,7 +184,7 @@ s32 modWaitAnimEnd(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
 }
 
 s32 summonThunder(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
-  spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
+  //spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
   shocked = true;
   spm::effdrv::func_800a82c0(2);
   return 2;
@@ -209,8 +232,8 @@ s32 setGravity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
 s32 evt_marioStatusApplyStatuses(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   spm::evtmgr::EvtVar * args = (spm::evtmgr::EvtVar * ) evtEntry -> pCurData;
   s32 status = args[0];
-  spm::effdrv::func_800a82c0(1);
-  //spm::mario_status::marioStatusApplyStatuses(status, 2);
+
+  spm::mario_status::marioStatusApplyStatuses(status, 2);
   return 2;
 }
 
@@ -333,6 +356,7 @@ EVT_BEGIN(playerMainLogic)
   IF_EQUAL(LW(8), 0)
     IF_EQUAL(LW(8), 1)
       LBL(25)
+      USER_FUNC(spm::evt_npc::evt_npc_get_position, PTR("me"), LW(1), LW(2), LW(3))
       USER_FUNC(npcGetPlayerVelocity, LW(5), LW(6), LW(7))
       ADD(LW(1), LW(5))
       ADD(LW(2), LW(6))

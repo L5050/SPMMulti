@@ -1,6 +1,6 @@
 #pragma once
 
-#include <types.h>
+#include <common.h>
 
 namespace mod::patch {
 
@@ -23,7 +23,7 @@ template<typename Func, typename Dest>
 Func hookFunction(Func function, Dest destination)
 {
     u32 * instructions = reinterpret_cast<u32 *>(function);
-    
+
     u32 * trampoline = new u32[2];
 
     // Original instruction
@@ -32,10 +32,10 @@ Func hookFunction(Func function, Dest destination)
 
     // Branch to original function past hook
     _writeBranch(&trampoline[1], &instructions[1]);
-    
+
     // Write actual hook
     _writeBranch(&instructions[0], reinterpret_cast<void *>(static_cast<Func>(destination)));
-    
+
     return reinterpret_cast<Func>(trampoline);
 }
 

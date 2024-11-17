@@ -31,12 +31,23 @@ extern spm::evtmgr::EvtScriptCode* thunderRageScript;
 s32 npcCheckPlayerVelocity(spm::evtmgr::EvtEntry * evtEntry, bool firstRun);
 u16 getMotionIdByClientID(int clientID);
 void setMotionIdByClientID(int clientID, u16 motionId);
+
 float getPositionXByClientID(int clientID);
 float getPositionYByClientID(int clientID);
 float getPositionZByClientID(int clientID);
+
+float getLastPositionXByClientID(int clientID);
+float getLastPositionYByClientID(int clientID);
+float getLastPositionZByClientID(int clientID);
+
+void setLastPositionXByClientID(int clientID, float pos);
+void setLastPositionYByClientID(int clientID, float pos);
+void setLastPositionZByClientID(int clientID, float pos);
+
 float getVelocityXByClientID(int clientID);
 float getVelocityYByClientID(int clientID);
 float getVelocityZByClientID(int clientID);
+
 bool getDCByClientID(int clientID);
 void removePlayer(int clientID);
 HTTPStatus_t registerPlayer();

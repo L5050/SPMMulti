@@ -1,7 +1,7 @@
 #include "evtdebug.h"
 #include "patch.h"
 
-#include <types.h>
+#include <common.h>
 #include <msl/string.h>
 #include <spm/evtmgr_cmd.h>
 #include <wii/os.h>

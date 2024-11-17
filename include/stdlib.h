@@ -1,5 +1,7 @@
 #pragma once
 
+#include <common.h>
+
 namespace mod {
 
 s32 roundi(f32 x);

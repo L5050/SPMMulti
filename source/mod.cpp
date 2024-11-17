@@ -54,6 +54,9 @@ namespace mod {
     float positionX;
     float positionY;
     float positionZ;
+    float lastPositionX = 0.0f;
+    float lastPositionY = 0.0f;
+    float lastPositionZ = 0.0f;
     float velocityX = 0.0f;
     float velocityY = 0.0f;
     float velocityZ = 0.0f;
@@ -190,6 +193,57 @@ namespace mod {
       }
     }
     return -1.0;
+  }
+
+  float getLastPositionXByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].lastPositionX;
+      }
+    }
+    return -1.0;
+  }
+
+  float getLastPositionYByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].lastPositionY;
+      }
+    }
+    return -1.0;
+  }
+
+  float getLastPositionZByClientID(int clientID) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        return clients[i].lastPositionZ;
+      }
+    }
+    return -1.0;
+  }
+
+  void setLastPositionXByClientID(int clientID, float pos) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        clients[i].lastPositionX = pos;
+      }
+    }
+  }
+
+  void setLastPositionYByClientID(int clientID, float pos) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        clients[i].lastPositionY = pos;
+      }
+    }
+  }
+
+  void setLastPositionZByClientID(int clientID, float pos) {
+    for (int i = 0; i < numOfClients; ++i) {
+      if (clients[i].clientID == clientID) {
+        clients[i].lastPositionZ = pos;
+      }
+    }
   }
 
   float getVelocityXByClientID(int clientID) {

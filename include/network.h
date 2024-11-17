@@ -2,7 +2,7 @@
 #define __NETWORK_H__
 
 
-#include <types.h>
+#include <common.h>
 
 #define INVALID_SOCKET	(~0)
 #define SOCKET_ERROR	(-1)
