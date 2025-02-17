@@ -77,6 +77,7 @@
 80055b38:camGetCurPtr
 80056a60:cam3dMain
 80058294:getScreenPoint
+800dfd88:evt_cam_get_pos
 // bss
 8050b580:camPtrTbl
 // more
@@ -95,6 +96,7 @@
 800a2fe4:eff_item_thunder
 800a315c:func_800a315c
 800a82c0:func_800a82c0
+800bc828:damageEffect
 
 // fadedrv.c
 800677f8:fadeIsFinish
@@ -115,7 +117,9 @@
 // more
 
 // icondrv.c
+800721dc:iconReInit
 800731b0:iconDispGx
+805adfd0:icondrv_wp
 // more
 
 // itemdrv.c
@@ -137,6 +141,7 @@
 // more
 
 // mapdrv.c
+8008c440:mapObjFlagOn
 8008cf30:mapGrpFlagOn
 8008d2fc:mapGrpFlagOff
 8008e11c:mapGrpFlag4On
@@ -146,6 +151,10 @@
 800b426c:func_800b426c
 800cd554:func_800cd554
 805aea50:errno
+
+// eff_spm_hit.c
+80094020:effSpmHitEntry
+
 
 // eff_nice.c
 800CC01C:effNiceEntry
@@ -191,6 +200,7 @@
 800d3878:evt_sub_intpl_msec_get_value
 800d40a4:evt_sub_random
 800d46d8:evt_sub_set_game_speed
+800d470c:evt_sub_get_mapname
 800d4de4:func_800d4de4
 800d4774:evt_sub_get_entername
 800d4960:evt_sub_get_language
@@ -311,8 +321,11 @@
 800efa4c:evt_mario_get_pos
 800efd28:evt_mario_direction_reset
 800efd88:evt_mario_direction_face
+800effb8:evt_mario_face_npc
 800f0074:evt_mario_face_coords
 800f046c:evt_mario_pos_change
+800f0d58:evt_mario_jump_to
+800f05b0:func_800f05b0
 800f1954:evt_mario_set_pose
 800F19C0:evt_mario_wait_anim
 800f2450:evt_mario_fairy_reset
@@ -338,13 +351,17 @@
 
 // evt_msg.c
 800fba54:evt_msg_print
+800fbad8:evt_msg_print_insert
 800fbe74:evt_msg_continue
+800fbf4c:evt_msg_select
 800fbc64:evt_msg_print_add
 800fbd00:evt_msg_print_add_insert
 800fc02c:evt_msg_toge
 800fd0c4:evt_msg_fmt_str
 // more
+
 // evt_npc.c
+800fdfd4:evtNpcNameToPtr_NoAssert
 800ff8f8:func_800ff8f8
 80102c7c:evt_npc_get_hp
 80102d3c:evt_npc_get_max_hp
@@ -358,7 +375,7 @@
 801006fc:evt_npc_arc_to
 801004c0:evt_npc_jump_to
 80102574:evt_npc_glide_to
-80102bf8:func_80102bf8
+80102bf8:evt_npc_restart_evt_id
 80102e68:evt_npc_delete
 80102EB8:evt_npc_stats_set_up
 80102f5c:evt_npc_entry
@@ -373,9 +390,12 @@
 80104694:evt_npc_set_move_mode
 80104c94:evt_npc_set_property
 80104fac:evt_npc_modify_part
+8010508c:evt_npc_get_property
 80105550:evt_npc_wait_flip_finished
 801055A4:evt_npc_finish_flip_instant
+801055ec:evt_npc_check_3d
 80105708:evt_npc_flip_to
+80105924:evt_npc_get_axis_movement_unit
 80105768:evt_npc_flip
 801059d0:func_801059d0
 801059D0:evt_npc_set_axis_movement_unit
@@ -392,6 +412,9 @@
 8010a418:evt_npc_wait_for
 8010a910:evt_npc_teleport_effect
 8010be80:evt_npc_tribe_agb_async
+801e59c4:evt_npc_dimen_determine_move_pos
+80c6a8e0:evt_npc_sammer_display_count
+
 // more
 
 // not sure where you want this
@@ -439,9 +462,11 @@
 80122b7c:marioKeyOffChk
 80122bf4:marioKeyOff
 80122c2c:marioKeyOn
+801243a8:marioMain
 8012a680:marioTakeDamage
 8012b50c:marioSetGravity
 8012a3a8:marioCalcDamageToEnemy
+8012b018:marioSetInvincibility
 // more
 
 // mario_motion.c
@@ -545,6 +570,7 @@
 8019d254:irand
 8019c54c:__assert2
 8019cf84:qqsort
+8019c688:distABf
 // more
 
 // debug.c
@@ -636,7 +662,7 @@
 805ae170:romfont_wp
 
 // spmario.c
-// text
+// textevt_npc_restart_evt_id
 801a7ddc:spmarioInit
 801a84d8:spmarioMain
 801a8748:spmarioDisp
@@ -671,6 +697,7 @@
 801bf7a0:npcEntryFromSetupEnemy
 801bfc48:npcSearchAnimDefs
 801c9adc:npcGetWorkPtr
+801cc150:npcDamageMario
 801e3a1c:npcDropItem
 801ca1a4:func_801ca1a4
 // more
@@ -682,8 +709,16 @@
 
 // npc_dimeen_l.c
 // data
+80457140:dimen_unk_fight_script_1
+80457190:dimen_unk_fight_script_2
+80459028:dimen_unk_fight_script_3
 8045B9E0:superDimentioHeadDefenses
 8045B9F8:superDimentioBodyDefenses
+//more
+
+// npc_ninja.c
+// data
+8021de00:ninjoe_bomb_calc_chance
 //more
 
 // wpadmgr.c
@@ -970,7 +1005,12 @@
 1,1,52e4:evt_machi_set_elv_descs
 // more
 
-//sp4_13.c
+// ta3_02
+//todo: convert to rel address
+80d7ac80:tree_block_trigger
+// more
+
+// sp4_13.c
 // text
 1,1,16854:spReturnAngryAnimPos
 1,1,16a08:func_80c5c304
