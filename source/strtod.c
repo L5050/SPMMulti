@@ -14,6 +14,14 @@
 #define ALT_CPU_HARDWARE_MULX_PRESENT 1
 #endif
 
+  void __gthread_mutex_destroy() {
+    //EASTL SUCKS
+  }
+
+  void abort() {
+    //EASTL SUCKS
+  }
+
 static const char *skipWhiteSpaces(const char *str)
 { // skip leading white spaces
   while (*str && *str <= ' ') ++str;

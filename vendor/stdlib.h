@@ -4,6 +4,8 @@
 extern "C" {
 #endif
 
+void __gthread_mutex_destroy();
+
 void abort(void);
 double strtod(char const* str, char** endptr);
 unsigned long strtoul(const char *nptr, char **endptr, int base);

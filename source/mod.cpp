@@ -1,6 +1,6 @@
 #include "mod.h"
 #include "evt_cmd.h"
-#include "stdlib.h"
+#include "spm_stdlib.h"
 #include "commandmanager.h"
 #include "patch.h"
 #include "netmemoryaccess.h"
@@ -363,16 +363,17 @@ namespace mod {
   void spmServerLoop(u32 param) {
     (void) param;
     while (1) {
+      wii::os::OSReport("loop is running\n");
       timerLimit += 1;
       checkForPlayersTimer += 1;
       updateStatsTimer += 1;
-      if (timerLimit >= 3){
+      if (timerLimit >= 2){
       timerLimit = 0;
       bool varCheck = true;
       if (varCheck == true) { //update position
 
         u8 responseBuffer[1024];
-        const char postBuffer[1024];
+        const char postBuffer[500];
 
         spm::mario::MarioWork * mwpp = spm::mario::marioGetPtr();
         spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
@@ -396,13 +397,13 @@ namespace mod {
             motionId
         );
 
-        s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
             wii::os::OSReport("Response Bytes: %d\n", responseBytes);
         } else {
-            wii::os::OSReport("No response received or an error occurred\n");
+            wii::os::OSReport("No response received or an error occurred (update pos)\n");
         }
 
       }
@@ -411,7 +412,7 @@ namespace mod {
         checkForPlayersTimer = 0;
 
         u8 responseBuffer[1024];
-        const char postBuffer[1024];
+        const char postBuffer[500];
 
         snprintf(postBuffer, sizeof(postBuffer), "checkForPlayers.%d.%d.%d.%s.%s",
             spm::spmario::gp->gsw[2002],
@@ -421,7 +422,7 @@ namespace mod {
             spm::spmario::gp->mapName
         );
 
-        s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
@@ -466,7 +467,7 @@ namespace mod {
                 checkingForPlayers = true;
             }
         } else {
-            wii::os::OSReport("No response received or an error occurred\n");
+            wii::os::OSReport("No response received or an error occurred (checking for players)\n");
             checkingForPlayers = true;
         }
       }
@@ -488,7 +489,7 @@ namespace mod {
               spm::spmario::gp -> mapName,
               joiningClients[i] // Replace any instance of evtEntry -> lw[4] with i
             );
-            s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+            s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
 
             // Ensure data was received
             if (responseBytes > 0) {
@@ -524,7 +525,7 @@ namespace mod {
                     wii::os::OSReport("Unexpected response size: %d\n", responseBytes);
                 }
             } else {
-                wii::os::OSReport("No response received or an error occurred.\n");
+                wii::os::OSReport("No response received or an error occurred (getPlayerInfo)\n");
             }
 
             u8 responseBuffer1[512];
@@ -536,7 +537,7 @@ namespace mod {
               spm::spmario::gp -> mapName,
               joiningClients[i]
             );
-            responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer1, 1024);
+            responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer1, 1024);
 
             // Ensure data was received
             if (responseBytes > 0) {
@@ -568,7 +569,7 @@ namespace mod {
                     wii::os::OSReport("Incorrect number of bytes received. Expected 12.\n");
                 }
             } else {
-                wii::os::OSReport("No response received or an error occurred\n");
+                wii::os::OSReport("No response received or an error occurred (getPlayerPos)\n");
             }
             addPlayer(joiningClients[i], posArray[0], posArray[1], posArray[2], playerStats[0], playerStats[1], playerStats[2]);
             spm::evtmgr::EvtEntry * evtEntry = spm::evtmgr::evtEntry(evt_spawn_players, 1, 0x0);
@@ -595,7 +596,7 @@ namespace mod {
             spm::spmario::gp -> mapName,
             clients[i].clientID
           );
-          s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+          s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
 
           // Ensure data was received
           if (responseBytes > 0) {
@@ -653,10 +654,12 @@ namespace mod {
               } else {
                   wii::os::OSReport("Incorrect number of bytes received. Expected 14.\n");
                   clients[i].isDisconnected = true;
+                  removePlayer(clients[i].clientID);
               }
           } else {
               wii::os::OSReport("No response received or an error occurredeww\n");
               clients[i].isDisconnected = true;
+              removePlayer(clients[i].clientID);
           }
 
         }
@@ -679,13 +682,13 @@ namespace mod {
           spm::spmario::gp -> gsw0
         );
 
-        s32 responseBytes = SendUDP("76.138.196.253", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
           wii::os::OSReport("Response Bytes: %d\n", responseBytes);
         } else {
-          wii::os::OSReport("No response received or an error occurred\n");
+          wii::os::OSReport("No response received or an error occurred (updateStats)\n");
         }
 
       }
@@ -779,7 +782,7 @@ namespace mod {
     );
     wii::os::OSReport("Level: %d\n", pouch_ptr -> level);
 
-    HTTPStatus_t mystatus = HTTPSendRequest("76.138.196.253", 3000, "/register", HTTP_METHOD_POST, postBuffer, strlen(postBuffer), & response);
+    HTTPStatus_t mystatus = HTTPSendRequest("192.168.0.113", 3000, "/register", HTTP_METHOD_POST, postBuffer, strlen(postBuffer), & response);
     wii::os::OSReport("Status: %d\n", mystatus);
     //wii::os::OSReport("Status: %s\n", response.pBuffer);
     //get rid of the garbage data
@@ -830,7 +833,7 @@ namespace mod {
 
     wii::os::OSReport("Position: %f %f %f\n", pos.x, pos.y, pos.z);
 
-    HTTPStatus_t mystatus = HTTPSendRequest("76.138.196.253", 3000, "/connect", HTTP_METHOD_POST, postBuffer, strlen(postBuffer), & response);
+    HTTPStatus_t mystatus = HTTPSendRequest("192.168.0.113", 3000, "/connect", HTTP_METHOD_POST, postBuffer, strlen(postBuffer), & response);
     wii::os::OSReport("Status: %d\n", mystatus);
     //wii::os::OSReport("Status: %s\n", response.pBuffer);
     //get rid of the garbage data
