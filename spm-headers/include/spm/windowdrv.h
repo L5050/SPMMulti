@@ -92,24 +92,24 @@ bool windowDeleteID(s32 id);
 */
 void windowMain();
 
-UNKNOWN_FUNCTION(func_80038b08);
-UNKNOWN_FUNCTION(func_80038cc0);
-UNKNOWN_FUNCTION(func_80038fb8);
+UNKNOWN_FUNCTION(func_80038b08)
+UNKNOWN_FUNCTION(func_80038cc0)
+UNKNOWN_FUNCTION(func_80038fb8)
 
 /*
     Draws the background for a sign message
 */
 void windowDispGX_Kanban(s32 type, GXColor * colour, f32 x, f32 y, f32 width, f32 height);
 
-UNKNOWN_FUNCTION(func_800393c8);
+UNKNOWN_FUNCTION(func_800393c8)
 
 /*
     Draws the background for a system message
 */
 void windowDispGX_System(s32 type, u8 alpha, f32 x, f32 y, f32 width, f32 height);
 
-UNKNOWN_FUNCTION(func_80039b80);
-UNKNOWN_FUNCTION(func_80039d40);
+UNKNOWN_FUNCTION(func_80039b80)
+UNKNOWN_FUNCTION(func_80039d40)
 
 /*
     Draws the background for a regular message
@@ -124,7 +124,7 @@ void windowDispGX_ItemBox(Unk, GXColor * colour, f32 x, f32 y, f32 width, f32 he
 /*
     Draws a solid colour rectangle with a black border
 */
-void windowDispGX2_Waku_col(Mtx34 * mtx, u32 gxTexMapId, const GXColor * colour, f32 x, f32 y,
+void windowDispGX2_Waku_col(Mtx34 mtx, u32 gxTexMapId, const GXColor * colour, f32 x, f32 y,
                             f32 width, f32 height, f32 curve);
 
 /*
