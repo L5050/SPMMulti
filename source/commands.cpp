@@ -1,8 +1,11 @@
 #include "commands.h"
 #include <spm/evt_mario.h>
 #include <spm/evt_msg.h>
+#include <spm/evt_mario.h>
+#include <spm/evt_item.h>
 #include <spm/evtmgr.h>
 #include <spm/system.h>
+#include <wii/os.h>
 #include <msl/stdio.h>
 
 namespace mod {
@@ -48,6 +51,13 @@ COMMAND(write, "Writes memory to the console. (write address base64_encoded_byte
     return (u32)sizeof(s32);
 })
 
+EVT_BEGIN(give_ap_item)
+USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(5), LW(6), LW(7))
+USER_FUNC(spm::evt_item::evt_item_entry, PTR("ap_get"), LW(0), LW(5), LW(6), LW(7), 0, 0, 0, 0, 0)
+USER_FUNC(spm::evt_item::evt_item_flag_onoff, 1, PTR("ap_get"), 8)
+RETURN()
+EVT_END()
+
 EVT_BEGIN(msgbox_cmd)
     USER_FUNC(spm::evt_mario::evt_mario_key_off, 1)
     USER_FUNC(spm::evt_msg::evt_msg_print, 1, LW(0), 0, 0)
@@ -78,6 +88,16 @@ COMMAND(msgbox, "Displays a message box on the screen. (msgbox base64_encoded_st
 
     msl::string::memcpy((void*)response, &msgboxTextLen, sizeof(s32));
     return sizeof(s32);
+})
+
+COMMAND(item, "Gives mario an item. (item itemId)", 1, {
+    wii::os::OSReport("itemId %s\n", args[0]);
+    s32 itemId = strtoul(args[0], NULL, 10);
+    wii::os::OSReport("itemId %d\n", itemId);
+    spm::evtmgr::EvtEntry* evt = spm::evtmgr::evtEntry(give_ap_item, 0, 0);
+    evt->lw[0] = itemId;
+
+    return 1;
 })
 
 EVT_DEFINE_USER_FUNC(evt_post_msgbox) {

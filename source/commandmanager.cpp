@@ -20,6 +20,7 @@ void initCommands() {
     commandManager->addCommand(&read);
     commandManager->addCommand(&write);
     commandManager->addCommand(&msgbox);
+    commandManager->addCommand(&item);
 }
 
 CommandManager* CommandManager::s_instance = nullptr;

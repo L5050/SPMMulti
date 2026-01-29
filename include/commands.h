@@ -20,6 +20,7 @@ extern Command read;
 extern Command write;
 
 extern Command msgbox;
+extern Command item;
 EVT_DECLARE(msgbox_cmd)
 EVT_DECLARE(fwd_msgbox_cmd)
 EVT_DECLARE_USER_FUNC(evt_post_msgbox, 1)
