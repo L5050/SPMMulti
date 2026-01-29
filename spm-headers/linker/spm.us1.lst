@@ -672,3 +672,11 @@
 80067810:fadeGetFadeInLength
 8006781C:fadeSetTransitionLengths
 8056D0A8:fadedrv_wp
+
+// new to SPMNetMemoryAccess
+802754d0:OSYieldThread
+8027550c:OSCreateThread
+80275b74:OSResumeThread
+802587ac:memcmp
+80296b74:IOS_Ioctlv
+80542350:spm_errno
