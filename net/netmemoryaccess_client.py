@@ -28,6 +28,7 @@ def send_packet(cmd_id: int, payload: bytes = b"", recv_size: int = 1024) -> byt
 
     header = struct.pack(">HH", cmd_id, packet_len)
     packet = header + payload
+    print (packet.hex(" "))
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
@@ -36,7 +37,8 @@ def send_packet(cmd_id: int, payload: bytes = b"", recv_size: int = 1024) -> byt
 
 def item(item_id: int, idx: int = 0) -> bytes:
     # payload for CMD_ITEM: u16 idx, u16 itemId
-    payload = struct.pack(">HH", idx & 0xFFFF, item_id & 0xFFFF)
+    payload = struct.pack(">IH", idx & 0xFFFFFFFF, item_id & 0xFFFF)
+    print(payload.hex(" "))
     return send_packet(Cmd.CMD_ITEM, payload)
 
 if __name__ == "__main__":
@@ -52,7 +54,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
         item_id = int(sys.argv[2], 10)
-        idx = int(sys.argv[3], 10) if len(sys.argv) >= 4 else 0
+        idx = int(sys.argv[3], 10) if len(sys.argv) >= 4 else 1
 
         resp = item(item_id, idx)
         print("response:", resp)

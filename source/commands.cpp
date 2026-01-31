@@ -4,9 +4,7 @@
 #include <spm/evt_mario.h>
 #include <spm/evt_item.h>
 #include <spm/evtmgr.h>
-#include <spm/spmario.h>
 #include <spm/system.h>
-#include <EASTL/vector.h>
 #include <wii/os.h>
 #include <msl/stdio.h>
 
@@ -108,7 +106,7 @@ COMMAND(CMD_ITEM, item, "Gives mario an item. (item itemId)", 1, {
     return EVT_RET_CONTINUE;
 }*/
 
-static u16 s_lastItemIdx = 0;
+static u32 s_lastItemIdx = 0;
 
 u32 handleItemBinary(
     const u8* payload,
@@ -116,17 +114,18 @@ u32 handleItemBinary(
     u8* response,
     size_t responseSize
 ) {
-    if (payloadLen < sizeof(u16) * 2) {
+    if (payloadLen < (sizeof(u32) + sizeof(u16))) {
         wii::os::OSReport("CMD_ITEM: payload too small (%zu)\n", payloadLen);
         return 0;
     }
 
-    u16 idx, itemId;
-    msl::string::memcpy(&idx, payload + 0, sizeof(u16));
-    msl::string::memcpy(&itemId, payload + sizeof(u16), sizeof(u16));
+    u32 idx;
+    u16 itemId;
+    msl::string::memcpy(&idx, payload + 0, sizeof(u32));
+    msl::string::memcpy(&itemId, payload + sizeof(u32), sizeof(u16));
 
     // DUPLICATE / OUT-OF-ORDER GUARD
-    if (idx <= s_lastItemIdx) {
+    if (idx != (s_lastItemIdx + 1)) {
         wii::os::OSReport("CMD_ITEM: ignored idx=%u (last=%u)\n", idx, s_lastItemIdx);
 
         if (responseSize >= sizeof(u32)) {
@@ -135,22 +134,23 @@ u32 handleItemBinary(
             return sizeof(u32);
         }
         return 0;
-    }
+    } else {
 
-    // Accept and advance
-    s_lastItemIdx = idx;
+        // Accept and advance
+        s_lastItemIdx = idx;
 
-    wii::os::OSReport("CMD_ITEM: accept idx=%u itemId=%u\n", idx, itemId);
+        wii::os::OSReport("CMD_ITEM: accept idx=%u itemId=%u\n", idx, itemId);
 
-    spm::evtmgr::EvtEntry* evt = spm::evtmgr::evtEntry(give_ap_item, 0, 0);
-    evt->lw[0] = (s32)itemId;
+        spm::evtmgr::EvtEntry* evt = spm::evtmgr::evtEntry(give_ap_item, 0, 0);
+        evt->lw[0] = (s32)itemId;
 
-    if (responseSize >= sizeof(u32)) {
-        u32 ok = 1;
-        msl::string::memcpy(response, &ok, sizeof(u32));
-        return sizeof(u32);
-    }
-    return 0;
+        if (responseSize >= sizeof(u32)) {
+            u32 ok = 1;
+            msl::string::memcpy(response, &ok, sizeof(u32));
+            return sizeof(u32);
+        }
+        return 0;
+} 
 }
 
 EVT_DEFINE_USER_FUNC(evt_deref) {
