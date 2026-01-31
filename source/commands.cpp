@@ -4,7 +4,9 @@
 #include <spm/evt_mario.h>
 #include <spm/evt_item.h>
 #include <spm/evtmgr.h>
+#include <spm/spmario.h>
 #include <spm/system.h>
+#include <EASTL/vector.h>
 #include <wii/os.h>
 #include <msl/stdio.h>
 

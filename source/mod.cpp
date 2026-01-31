@@ -2,6 +2,7 @@
 #include "commandmanager.h"
 #include "evtpatch.h"
 #include "patch.h"
+#include "msgpatch.h"
 #include "netmemoryaccess.h"
 #include "network.h"
 
@@ -9,6 +10,7 @@
 #include <spm/fontmgr.h>
 #include <spm/seqdrv.h>
 #include <spm/seqdef.h>
+#include <spm/item_data.h>
 #include <spm/evt_pouch.h>
 #include <spm/evt_seq.h>
 #include <spm/map_data.h>
@@ -135,7 +137,13 @@ void main()
     
     NetMemoryAccess::init();
     evtpatch::evtmgrExtensionInit();
+    msgpatch::msgpatchMain();
     evt_patches();
+    msgpatch::msgpatchAddEntry("msg_AP_item_name", "AP Item", false);
+    msgpatch::msgpatchAddEntry("msg_AP_item_desc", "A valuable object from another dimension.", false);
+    spm::item_data::itemDataTable[45].nameMsg = "msg_AP_item_name";
+    spm::item_data::itemDataTable[45].descMsg = "msg_AP_item_desc";
+    spm::item_data::itemDataTable[45].iconId = 324;
 
     titleScreenCustomTextPatch();
 }
