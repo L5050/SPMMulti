@@ -87,39 +87,73 @@ void receiverLoop(u32 param) {
     }
 
     s32 size;
-    while(1)
+    while (1)
     {
         msl::string::memset(sendBuff, 0, BUFSIZE);
         msl::string::memset(recvBuff, 0, BUFSIZE);
+
         do {
             wii::os::OSYieldThread();
             connfd = Mynet_accept(listenfd, (struct sockaddr*)&serv_addr, &addrlen);
         } while (connfd < 0);
-        
-        int bytes = 0;
+
         int totalReceived = 0;
-        do {
-            bytes = Mynet_read(connfd, recvBuff + totalReceived, READ_CHUNK_SIZE);
-            if (bytes < 0)
-                break;
+        bool ok = true;
+
+        // read header (4 bytes)
+        while (totalReceived < (int)(sizeof(u16) * 2)) {
+            int bytes = Mynet_read(
+                connfd,
+                recvBuff + totalReceived,
+                (sizeof(u16) * 2) - totalReceived
+            );
+
+            if (bytes <= 0) { ok = false; break; }
             totalReceived += bytes;
-        } while (!msl::string::strchr((const char*)recvBuff, NETMEMORYACCESS_EOF));
-        recvBuff[totalReceived-NETMEMORYACCESS_EOF_SIZE] = '\0'; // remove the EOF character
-
-        if (bytes < 0) {
-            wii::os::OSReport("Error reading request. %d\n", bytes);
-            Mynet_close(connfd);
-            wii::os::OSYieldThread();
-            continue;
         }
-    
-        auto commandManager = mod::CommandManager::Instance();
-        size = commandManager->parseAndExecute((const char*)recvBuff, sendBuff, BUFSIZE);
 
-        Mynet_write(connfd, sendBuff, size);
+        u16 packetLength = 0;
+
+        if (ok) {
+            // extract packet_length
+            msl::string::memcpy(&packetLength, recvBuff + sizeof(u16), sizeof(u16));
+
+            if (packetLength > BUFSIZE || packetLength < sizeof(u16) * 2) {
+                wii::os::OSReport("Bad packet length: %u\n", packetLength);
+                ok = false;
+            }
+        }
+
+        if (ok) {
+            // read remaining bytes
+            while (totalReceived < (int)packetLength) {
+                int bytes = Mynet_read(
+                    connfd,
+                    recvBuff + totalReceived,
+                    packetLength - totalReceived
+                );
+
+                if (bytes <= 0) { ok = false; break; }
+                totalReceived += bytes;
+            }
+        }
+
+        if (ok) {
+            auto* commandManager = mod::CommandManager::Instance();
+            size = commandManager->parseAndExecute(
+                recvBuff,
+                packetLength,
+                sendBuff,
+                BUFSIZE
+            );
+
+            Mynet_write(connfd, sendBuff, size);
+        }
+
         Mynet_close(connfd);
         wii::os::OSYieldThread();
     }
-}
+
+    }
 
 }

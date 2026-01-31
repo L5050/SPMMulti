@@ -17,29 +17,45 @@ namespace mod {
 
 void initCommands() {
     auto commandManager = CommandManager::CreateInstance();
-    commandManager->addCommand(&read);
+    /*commandManager->addCommand(&read);
     commandManager->addCommand(&write);
-    commandManager->addCommand(&msgbox);
+    commandManager->addCommand(&msgbox);*/
     commandManager->addCommand(&item);
 }
 
 CommandManager* CommandManager::s_instance = nullptr;
 
-Command::Command(const char* name, const char* helpMsg, s32 argc, CommandCb cb) {
+Command::Command(CommandId id, const char* name, const char* helpMsg, s32 argc, CommandCb cb) {
+    this->id = id;
     this->name = name;
     this->helpMsg = helpMsg;
     this->argc = argc;
     this->cb = cb;
 }
 
-u32 Command::execute(eastl::vector<const char*> &args, u8* response, size_t responseSize) const {
+u32 Command::executeBinary(
+    const u8* payload,
+    size_t payloadLen,
+    u8* response,
+    size_t responseSize
+) const {
+    // dolphin log for debugging
+    wii::os::OSReport(
+        "executeBinary: cmd=%s payloadLen=%zu\n",
+        name,
+        payloadLen
+    );
+    return 0;
+}
+
+/*u32 Command::execute(eastl::vector<const char*> &args, u8* response, size_t responseSize) const {
     s32 realArgc = args.size();
     if (realArgc != argc && argc != ANY_ARGC) {
         msl::stdio::snprintf((char*)response, responseSize, "Error: expected %d arguments, got %d\n", argc, realArgc);
         return msl::string::strlen((char*)response);
     }
     return cb(args, response, responseSize);
-}
+}*/
 
 const char* Command::getName() const {
     return name;
@@ -90,20 +106,62 @@ bool CommandManager::removeCommand(const char* name) {
     return false;
 }
 
-u32 CommandManager::parseAndExecute(const char* str, u8* response, size_t responseSize) {
-    wii::os::OSReport("%s\n", str);
-    eastl::vector<const char*> attrs;
-    for (auto &e : split(str, ' ')) {
-        attrs.push_back(e.c_str());
+const Command* CommandManager::findCommandById(CommandId id) {
+    for (auto* cmd : this->commands) {
+        if (cmd->id == id)
+            return cmd;
     }
-    const Command* pCmd = findCommand(attrs[0]);
-    if (pCmd == nullptr) {
-        wii::os::OSReport("Can't find command %s\n", attrs[0]);
-        return false;
-    }
-    
-    attrs.erase(attrs.begin() + 0);
-    return pCmd->execute(attrs, response, responseSize);
+    return nullptr;
 }
+
+u32 CommandManager::parseAndExecute(
+    const u8* data,
+    size_t len,
+    u8* response,
+    size_t responseSize
+) {
+    // must at least contain command_id + packet_length
+    if (len < sizeof(u16) * 2) {
+        wii::os::OSReport("Packet too small\n");
+        return 0;
+    }
+
+    // parse header
+    u16 commandId;
+    u16 packetLength;
+
+    msl::string::memcpy(&commandId, data, sizeof(u16));
+    msl::string::memcpy(&packetLength, data + sizeof(u16), sizeof(u16));
+
+    // sanity check
+    if (packetLength != len) {
+        wii::os::OSReport(
+            "Packet length mismatch (hdr=%u, actual=%zu)\n",
+            packetLength, len
+        );
+        return 0;
+    }
+
+    const Command* pCmd = findCommandById((CommandId)commandId);
+    if (!pCmd) {
+        wii::os::OSReport("Unknown command id %u\n", commandId);
+        return 0;
+    }
+
+    // payload starts after the header
+const u8* payload = data + sizeof(u16) * 2;
+size_t payloadLen = len - sizeof(u16) * 2;
+
+// only have item command set up, but set up for future expansion
+switch ((CommandId)commandId) {
+case CMD_ITEM: {
+    return handleItemBinary(payload, payloadLen, response, responseSize);
+}
+default:
+    wii::os::OSReport("Unknown command id %u\n", commandId);
+    return 0;
+}
+}
+
 
 }

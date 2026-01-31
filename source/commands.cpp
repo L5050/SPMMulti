@@ -14,7 +14,7 @@ inline bool isWithinMem1Range(s32 ptr) {
     return (ptr >= 0x80000000 && ptr <= 0x817fffff);
 }
 
-COMMAND(read, "Reads memory from the console. (read address n)", 2, {
+/*COMMAND(read, "Reads memory from the console. (read address n)", 2, {
     u32 ptr = strtoul(args[0], NULL, 16);
     u32 size = strtoul(args[1], NULL, 10);
     if (size > responseSize) {
@@ -49,7 +49,7 @@ COMMAND(write, "Writes memory to the console. (write address base64_encoded_byte
 
     msl::string::memcpy((void*)response, &decodedLen, sizeof(s32));
     return (u32)sizeof(s32);
-})
+})*/
 
 EVT_BEGIN(give_ap_item)
 USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(5), LW(6), LW(7))
@@ -58,7 +58,7 @@ USER_FUNC(spm::evt_item::evt_item_flag_onoff, 1, PTR("ap_get"), 8)
 RETURN()
 EVT_END()
 
-EVT_BEGIN(msgbox_cmd)
+/*EVT_BEGIN(msgbox_cmd)
     USER_FUNC(spm::evt_mario::evt_mario_key_off, 1)
     USER_FUNC(spm::evt_msg::evt_msg_print, 1, LW(0), 0, 0)
     USER_FUNC(spm::evt_msg::evt_msg_continue)
@@ -69,9 +69,9 @@ EVT_END()
 EVT_BEGIN(fwd_msgbox_cmd)
     RUN_EVT(msgbox_cmd)
     RETURN()
-EVT_END()
+EVT_END()*/
 
-COMMAND(msgbox, "Displays a message box on the screen. (msgbox base64_encoded_string size)", 2, {
+/*COMMAND(msgbox, "Displays a message box on the screen. (msgbox base64_encoded_string size)", 2, {
     const char* b64data = args[0];
     s32 msgboxTextLen = strtoul(args[1], NULL, 10);
 
@@ -88,9 +88,9 @@ COMMAND(msgbox, "Displays a message box on the screen. (msgbox base64_encoded_st
 
     msl::string::memcpy((void*)response, &msgboxTextLen, sizeof(s32));
     return sizeof(s32);
-})
+})*/
 
-COMMAND(item, "Gives mario an item. (item itemId)", 1, {
+COMMAND(CMD_ITEM, item, "Gives mario an item. (item itemId)", 1, {
     wii::os::OSReport("itemId %s\n", args[0]);
     s32 itemId = strtoul(args[0], NULL, 10);
     wii::os::OSReport("itemId %d\n", itemId);
@@ -100,10 +100,55 @@ COMMAND(item, "Gives mario an item. (item itemId)", 1, {
     return 1;
 })
 
-EVT_DEFINE_USER_FUNC(evt_post_msgbox) {
+/*EVT_DEFINE_USER_FUNC(evt_post_msgbox) {
     char* textPtr = reinterpret_cast<char*>(spm::evtmgr_cmd::evtGetValue(evt, evt->pCurData[0]));
     delete[] textPtr;
     return EVT_RET_CONTINUE;
+}*/
+
+static u16 s_lastItemIdx = 0;
+
+u32 handleItemBinary(
+    const u8* payload,
+    size_t payloadLen,
+    u8* response,
+    size_t responseSize
+) {
+    if (payloadLen < sizeof(u16) * 2) {
+        wii::os::OSReport("CMD_ITEM: payload too small (%zu)\n", payloadLen);
+        return 0;
+    }
+
+    u16 idx, itemId;
+    msl::string::memcpy(&idx, payload + 0, sizeof(u16));
+    msl::string::memcpy(&itemId, payload + sizeof(u16), sizeof(u16));
+
+    // DUPLICATE / OUT-OF-ORDER GUARD
+    if (idx <= s_lastItemIdx) {
+        wii::os::OSReport("CMD_ITEM: ignored idx=%u (last=%u)\n", idx, s_lastItemIdx);
+
+        if (responseSize >= sizeof(u32)) {
+            u32 ignored = 0;
+            msl::string::memcpy(response, &ignored, sizeof(u32));
+            return sizeof(u32);
+        }
+        return 0;
+    }
+
+    // Accept and advance
+    s_lastItemIdx = idx;
+
+    wii::os::OSReport("CMD_ITEM: accept idx=%u itemId=%u\n", idx, itemId);
+
+    spm::evtmgr::EvtEntry* evt = spm::evtmgr::evtEntry(give_ap_item, 0, 0);
+    evt->lw[0] = (s32)itemId;
+
+    if (responseSize >= sizeof(u32)) {
+        u32 ok = 1;
+        msl::string::memcpy(response, &ok, sizeof(u32));
+        return sizeof(u32);
+    }
+    return 0;
 }
 
 EVT_DEFINE_USER_FUNC(evt_deref) {
