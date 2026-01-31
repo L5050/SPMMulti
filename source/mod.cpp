@@ -11,6 +11,7 @@
 #include <spm/seqdrv.h>
 #include <spm/seqdef.h>
 #include <spm/item_data.h>
+#include <spm/mario_pouch.h>
 #include <spm/evt_pouch.h>
 #include <spm/evt_seq.h>
 #include <spm/map_data.h>
@@ -48,6 +49,16 @@ static void titleScreenCustomTextPatch()
     seq_titleMainReal = spm::seqdef::seq_data[spm::seqdrv::SEQ_TITLE].main;
     spm::seqdef::seq_data[spm::seqdrv::SEQ_TITLE].main = &seq_titleMainOverride;
 }
+  bool( * pouchAddItem)(s32 itemId);
+
+  bool new_pouchAddItem(s32 itemId)
+  {
+    if (itemId == 45)
+    {
+      return true;
+    }
+    return pouchAddItem(itemId);
+  }
 
   EVT_BEGIN(insertNop)
     SET(LW(0), LW(0))
@@ -137,13 +148,14 @@ void main()
     
     NetMemoryAccess::init();
     evtpatch::evtmgrExtensionInit();
-    msgpatch::msgpatchMain();
     evt_patches();
+    msgpatch::msgpatchMain();
     msgpatch::msgpatchAddEntry("msg_AP_item_name", "AP Item", false);
     msgpatch::msgpatchAddEntry("msg_AP_item_desc", "A valuable object from another dimension.", false);
     spm::item_data::itemDataTable[45].nameMsg = "msg_AP_item_name";
     spm::item_data::itemDataTable[45].descMsg = "msg_AP_item_desc";
     spm::item_data::itemDataTable[45].iconId = 324;
+    pouchAddItem = patch::hookFunction(spm::mario_pouch::pouchAddItem, new_pouchAddItem);
 
     titleScreenCustomTextPatch();
 }
