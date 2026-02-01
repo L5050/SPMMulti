@@ -5,6 +5,7 @@
 #include <spm/evt_item.h>
 #include <spm/evtmgr.h>
 #include <spm/system.h>
+#include <spm/spmario.h>
 #include <wii/os.h>
 #include <msl/stdio.h>
 
@@ -106,7 +107,7 @@ COMMAND(CMD_ITEM, item, "Gives mario an item. (item itemId)", 1, {
     return EVT_RET_CONTINUE;
 }*/
 
-static u32 s_lastItemIdx = 0;
+static u32 * s_lastItemIdx = (u32 *)&spm::spmario::gp->gsw[1000];
 
 u32 handleItemBinary(
     const u8* payload,
@@ -125,8 +126,8 @@ u32 handleItemBinary(
     msl::string::memcpy(&itemId, payload + sizeof(u32), sizeof(u16));
 
     // DUPLICATE / OUT-OF-ORDER GUARD
-    if (idx != (s_lastItemIdx + 1)) {
-        wii::os::OSReport("CMD_ITEM: ignored idx=%u (last=%u)\n", idx, s_lastItemIdx);
+    if (idx != (*s_lastItemIdx + 1)) {
+        wii::os::OSReport("CMD_ITEM: ignored idx=%u (last=%u)\n", idx, *s_lastItemIdx);
 
         if (responseSize >= sizeof(u32)) {
             u32 ignored = 0;
@@ -137,7 +138,7 @@ u32 handleItemBinary(
     } else {
 
         // Accept and advance
-        s_lastItemIdx = idx;
+        *s_lastItemIdx = idx;
 
         wii::os::OSReport("CMD_ITEM: accept idx=%u itemId=%u\n", idx, itemId);
 
