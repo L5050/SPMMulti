@@ -5,6 +5,7 @@
 #include <spm/evt_item.h>
 #include <spm/evtmgr.h>
 #include <spm/system.h>
+#include <spm/mario.h>
 #include <spm/spmario.h>
 #include <wii/os.h>
 #include <msl/stdio.h>
@@ -53,9 +54,12 @@ COMMAND(write, "Writes memory to the console. (write address base64_encoded_byte
 })*/
 
 EVT_BEGIN(give_ap_item)
+USER_FUNC(spm::evt_mario::evt_mario_key_off, 0)
 USER_FUNC(spm::evt_mario::evt_mario_get_pos, LW(5), LW(6), LW(7))
 USER_FUNC(spm::evt_item::evt_item_entry, PTR("ap_get"), LW(0), LW(5), LW(6), LW(7), 0, 0, 0, 0, 0)
 USER_FUNC(spm::evt_item::evt_item_flag_onoff, 1, PTR("ap_get"), 8)
+USER_FUNC(spm::evt_item::evt_item_wait_collected, PTR("ap_get"))
+USER_FUNC(spm::evt_mario::evt_mario_key_on)
 RETURN()
 EVT_END()
 
@@ -136,7 +140,11 @@ u32 handleItemBinary(
         }
         return 0;
     } else {
-
+      if (spm::mario::marioKeyOffChk())
+      {
+        return 9;
+      }
+      
         // Accept and advance
         *s_lastItemIdx = idx;
 
