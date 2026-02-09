@@ -23,6 +23,7 @@ void initCommands() {
     commandManager->addCommand(&idx);
     commandManager->addCommand(&item);
     commandManager->addCommand(&ridx);
+    commandManager->addCommand(&rbusy);
 }
 
 CommandManager* CommandManager::s_instance = nullptr;
@@ -164,6 +165,9 @@ case CMD_IDX: {
 }
 case CMD_rIDX: {
     return readMemoryIdx(response, responseSize);
+}
+case CMD_rBUSY: {
+    return readMemoryBusy(response, responseSize);
 }
 default:
     wii::os::OSReport("Unknown command id %u\n", commandId);

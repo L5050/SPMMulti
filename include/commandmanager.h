@@ -13,7 +13,8 @@ typedef u32 (*CommandCb)(eastl::vector<const char*> &args, u8* response, size_t 
 enum CommandId {
         CMD_ITEM = 1,
         CMD_IDX = 2,
-        CMD_rIDX = 3
+        CMD_rIDX = 3,
+        CMD_rBUSY = 4
     };
 
 class Command {

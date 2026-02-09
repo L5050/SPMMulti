@@ -98,6 +98,15 @@ COMMAND(CMD_rIDX, ridx, "Reads the current item index. (ridx)", 0, {
     return sizeof(u32);
 })
 
+COMMAND(CMD_rBUSY, rbusy, "Reads whether Mario is busy (i.e., loading zone/item-acceptance menu). (rbusy)", 0, {
+    wii::os::OSReport("rbusy\n");
+
+    bool busy = spm::mario::marioKeyOffChk();
+
+    msl::string::memcpy((void*)response, &busy, sizeof(bool));
+    return sizeof(bool);
+})
+
 u32 handleItemBinary(
     const u8* payload,
     size_t payloadLen,
@@ -114,54 +123,36 @@ u32 handleItemBinary(
     msl::string::memcpy(&idx, payload + 0, sizeof(u32));
     msl::string::memcpy(&itemId, payload + sizeof(u32), sizeof(u16));
 
+    u16 itemState;
     // DUPLICATE / OUT-OF-ORDER GUARD
     if (idx != (*s_lastItemIdx + 1)) {
-        char msg[128];
-
-        msl::stdio::snprintf(
-            msg,
-            sizeof(msg),
-            "CMD_ITEM: ignored idx=%u expected=%u\n",
-            idx,
-            *s_lastItemIdx + 1
-        );
-
-        u32 len = strlen(msg);
-    memcpy(response, &len, sizeof(len));
-    memcpy(response + sizeof(len), msg, len);
-    return sizeof(len) + len;
+        itemState = 8; // Error code for duplicate / out-of-order
+        msl::string::memcpy((void*)response, &itemState, sizeof(u16));
+        return sizeof(u16);
     
     } else {
     if (spm::mario::marioKeyOffChk())
     {
-    return 9;
+        itemState = 9; // Error code for busy
+        msl::string::memcpy((void*)response, &itemState, sizeof(u16));
+        return sizeof(u16);
     }
 
         // Accept and advance
         *s_lastItemIdx = idx;
 
-        wii::os::OSReport("CMD_ITEM: accept idx=%u itemId=%u\n", idx, itemId);
-        char msg[128];
-
-        msl::stdio::snprintf(
-            msg,
-            sizeof(msg),
-            "CMD_ITEM: accept idx=%u itemId=%u\n",
-            idx,
-            itemId
-        );
-
         spm::mario::marioKeyOff();
         spm::evtmgr::EvtEntry* evt = spm::evtmgr::evtEntry(give_ap_item, 0, 0);
         evt->lw[0] = (s32)itemId;
 
-        if (responseSize >= sizeof(u32)) {
-            u32 len = strlen(msg);
-            memcpy(response, &len, sizeof(len));
-            memcpy(response + sizeof(len), msg, len);
-            return sizeof(len) + len;
+        if (responseSize >= sizeof(u16)) {
+            itemState = 1; // Success
+            msl::string::memcpy((void*)response, &itemState, sizeof(u16));
+            return sizeof(u16);
         }
-        return 0;
+        itemState = 0; // response too big
+        msl::string::memcpy((void*)response, &itemState, sizeof(u16));
+        return sizeof(u16);
     } 
 }
 
@@ -205,6 +196,18 @@ u32 readMemoryIdx(
 
     msl::string::memcpy((void*)response, &idx, sizeof(u32));
     return sizeof(u32);
+}
+
+u32 readMemoryBusy(
+    u8* response,
+    size_t responseSize
+) {
+    wii::os::OSReport("CMD_rBUSY: reading busy\n");
+
+    bool busy = spm::mario::marioKeyOffChk();
+
+    msl::string::memcpy((void*)response, &busy, sizeof(bool));
+    return sizeof(bool);
 }
 
 EVT_DEFINE_USER_FUNC(evt_deref) {
