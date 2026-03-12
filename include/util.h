@@ -2,8 +2,6 @@
 
 #include <types.h>
 #include <evt_cmd.h>
-#include <EASTL/string.h>
-#include <EASTL/vector.h>
 #include <spm/evtmgr.h>
 #include <spm/memory.h>
 #include <spm/nandmgr.h>
@@ -71,5 +69,4 @@ bool fileExists(const char * path);
 
 bool isPitEnemyRoom();
 
-eastl::vector<eastl::string> split(eastl::string input, char delimiter);
 }

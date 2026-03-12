@@ -18,6 +18,24 @@ typedef enum {
 #define NETMEMORYACCESS_EOF '\n'
 #define NETMEMORYACCESS_EOF_SIZE sizeof(char) //msl::string::strlen(NETMEMORYACCESS_EOF)
 
+#define MAX_OUTGOING 32
+
+struct OutgoingPacket {
+    u16 cmdID;
+    u16 length;
+    u8 data[256];
+};
+
+extern OutgoingPacket outgoingPackets[MAX_OUTGOING];
+extern int goutgoingHead;
+extern int goutgoingTail;
+
+bool enqueuePacket(
+    u16 cmdId,
+    const void* payload,
+    u16 payloadLen
+);
+
 extern u8 stack[STACK_SIZE];
 extern wii::os::OSThread thread;
 

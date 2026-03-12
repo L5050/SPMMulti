@@ -5,34 +5,39 @@
 #include "util.h"
 #include <msl/stdio.h>
 #include <msl/string.h>
-#define EASTL_USER_CONFIG_HEADER <eastl_config.h>
-#include <EASTL/algorithm.h>
-#include <EASTL/map.h>
-#include <EASTL/string.h>
-#include <EASTL/vector.h>
 #include <wii/os/OSError.h>
-using eastl::string;
 
 namespace mod {
 
-void initCommands() {
-    auto commandManager = CommandManager::CreateInstance();
-    /*commandManager->addCommand(&read);
-    commandManager->addCommand(&write);
-    commandManager->addCommand(&msgbox);*/
-    commandManager->addCommand(&idx);
-    commandManager->addCommand(&item);
+//Define command categories modularly to keep CommandManager logic clean
+void InitHelpCommand(CommandManager* commandManager) {
+    commandManager->addCommand(&help);
+}
+
+void InitReadCommands(CommandManager* commandManager) {
     commandManager->addCommand(&ridx);
     commandManager->addCommand(&rbusy);
 }
 
+void InitBaseCommands(CommandManager* commandManager) {
+    commandManager->addCommand(&idx);
+    commandManager->addCommand(&item);
+}
+
+void initCommands() {
+    auto commandManager = CommandManager::CreateInstance();
+    InitHelpCommand(commandManager);
+
+    InitReadCommands(commandManager);
+    InitBaseCommands(commandManager);
+}
+
 CommandManager* CommandManager::s_instance = nullptr;
 
-Command::Command(CommandId id, const char* name, const char* helpMsg, s32 argc, CommandCb cb) {
+Command::Command(CommandId id, const char* name, const char* helpMsg, CommandCb cb) {
     this->id = id;
     this->name = name;
     this->helpMsg = helpMsg;
-    this->argc = argc;
     this->cb = cb;
 }
 
@@ -48,26 +53,14 @@ u32 Command::executeBinary(
         name,
         payloadLen
     );
-    return 0;
+    return cb(payload, payloadLen, response, responseSize);
 }
-
-/*u32 Command::execute(eastl::vector<const char*> &args, u8* response, size_t responseSize) const {
-    s32 realArgc = args.size();
-    if (realArgc != argc && argc != ANY_ARGC) {
-        msl::stdio::snprintf((char*)response, responseSize, "Error: expected %d arguments, got %d\n", argc, realArgc);
-        return msl::string::strlen((char*)response);
-    }
-    return cb(args, response, responseSize);
-}*/
 
 const char* Command::getName() const {
     return name;
 }
 const char* Command::getHelpMsg() const {
     return helpMsg;
-}
-s32 Command::getArgc() const {
-    return argc;
 }
 
 
@@ -85,36 +78,54 @@ CommandManager* CommandManager::Instance() {
     return s_instance;
 }
 
-const Command* CommandManager::findCommand(const char* name) {
-    auto cmd = eastl::find_if(commands.begin(), commands.end(), [name](const Command* cmd) { return msl::string::strcmp(cmd->getName(), name) == 0; });
-    if (cmd != eastl::end(commands)) {
-        return *cmd;
-    }
-    return nullptr;
-}
+const Command* CommandManager::commandTable[MAX_CATEGORY_ID][MAX_COMMAND_ID] = {};
 
-bool CommandManager::addCommand(const Command* cmd) {
-    if (findCommand(cmd->name) != nullptr)
+
+
+bool CommandManager::addCommand(const Command* cmd)
+{
+    u8 category = (cmd->id >> 8) & 0xFF;
+    u8 command  = cmd->id & 0xFF;
+
+    if (category == CMD_CAT_HELP)
+    {
+        commandTable[category][command] = cmd;
+        wii::os::OSReport(
+        "\nRegister command %s (id=%04X cat=%u cmd=%u)\n",
+        cmd->getName(),
+        cmd->id,
+        category,
+        command
+        );
+        return true;
+    }
+
+    if (category >= MAX_CATEGORY_ID)
         return false;
-    commands.push_back(cmd);
+
+    if (command >= MAX_COMMAND_ID)
+        return false;
+
+    if (commandTable[category][command] != nullptr)
+        return false;
+
+    commandTable[category][command] = cmd;
+    wii::os::OSReport(
+    "Register command %s (id=%04X cat=%u cmd=%u)\n",
+    cmd->getName(),
+    cmd->id,
+    category,
+    command
+);
     return true;
 }
 
-bool CommandManager::removeCommand(const char* name) {
-    auto cmd = findCommand(name);
-    if (cmd != nullptr) {
-        commands.erase(&cmd);
-        return true;
-    }
-    return false;
-}
+const Command* CommandManager::findCommandById(CommandId id)
+{
+    u8 category = (id >> 8) & 0xFF;
+    u8 command  = id & 0xFF;
 
-const Command* CommandManager::findCommandById(CommandId id) {
-    for (auto* cmd : this->commands) {
-        if (cmd->id == id)
-            return cmd;
-    }
-    return nullptr;
+    return commandTable[category][command];
 }
 
 u32 CommandManager::parseAndExecute(
@@ -122,58 +133,67 @@ u32 CommandManager::parseAndExecute(
     size_t len,
     u8* response,
     size_t responseSize
-) {
-    // must at least contain command_id + packet_length
-    if (len < sizeof(u16) * 2) {
-        wii::os::OSReport("Packet too small\n");
-        return 0;
+)   {
+        // must at least contain command_id + packet_length
+        if (len < sizeof(u16) * 2) {
+            wii::os::OSReport("Packet too small\n");
+            return 0;
+        }
+
+        // parse header
+        u16 fullId;
+        u16 packetLength;
+
+        msl::string::memcpy(&fullId, data, sizeof(u16));
+        msl::string::memcpy(&packetLength, data + sizeof(u16), sizeof(u16));
+
+        // sanity check
+        if (packetLength != len) {
+            wii::os::OSReport(
+                "Packet length mismatch (hdr=%u, actual=%zu)\n",
+                packetLength, len
+            );
+            return 0;
+        }
+
+        u8 category = (fullId >> 8) & 0xFF;
+        u8 command  = fullId & 0xFF;
+
+        //special case for help command to live outside of 'normal' command table
+        if (category == CMD_CAT_HELP)
+        {
+            const Command* pCmd = commandTable[category][command];
+            if (!pCmd) {
+                wii::os::OSReport("Unknown help command %04X\n", fullId);
+                return 0;
+            }
+            // payload starts after the header
+            const u8* payload = data + sizeof(u16) * 2;
+            size_t payloadLen = len - sizeof(u16) * 2;
+
+            return pCmd->executeBinary(payload, payloadLen, response, responseSize);
+        }
+
+        if (category >= MAX_CATEGORY_ID) {
+            wii::os::OSReport("Invalid command category %u\n", category);
+            return 0;
+        }
+        if (command >= MAX_COMMAND_ID) {
+            wii::os::OSReport("Invalid command id %u\n", command);
+            return 0;
+        }
+
+        const Command* pCmd = commandTable[category][command];
+
+        if (!pCmd) {
+            wii::os::OSReport("Unknown command %04X\n", fullId);
+            return 0;
+        }
+
+        // payload starts after the header
+        const u8* payload = data + sizeof(u16) * 2;
+        size_t payloadLen = len - sizeof(u16) * 2;
+
+        return pCmd->executeBinary(payload, payloadLen, response, responseSize);
     }
-
-    // parse header
-    u16 commandId;
-    u16 packetLength;
-
-    msl::string::memcpy(&commandId, data, sizeof(u16));
-    msl::string::memcpy(&packetLength, data + sizeof(u16), sizeof(u16));
-
-    // sanity check
-    if (packetLength != len) {
-        wii::os::OSReport(
-            "Packet length mismatch (hdr=%u, actual=%zu)\n",
-            packetLength, len
-        );
-        return 0;
-    }
-
-    const Command* pCmd = findCommandById((CommandId)commandId);
-    if (!pCmd) {
-        wii::os::OSReport("Unknown command id %u\n", commandId);
-        return 0;
-    }
-
-    // payload starts after the header
-const u8* payload = data + sizeof(u16) * 2;
-size_t payloadLen = len - sizeof(u16) * 2;
-
-// switch cases
-switch ((CommandId)commandId) {
-case CMD_ITEM: {
-    return handleItemBinary(payload, payloadLen, response, responseSize);
-}
-case CMD_IDX: {
-    return handleIdxBinary(payload, payloadLen, response, responseSize);
-}
-case CMD_rIDX: {
-    return readMemoryIdx(response, responseSize);
-}
-case CMD_rBUSY: {
-    return readMemoryBusy(response, responseSize);
-}
-default:
-    wii::os::OSReport("Unknown command id %u\n", commandId);
-    return 0;
-}
-}
-
-
 }

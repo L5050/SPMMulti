@@ -2,14 +2,17 @@
 #include "stack.hh"
 #include <spm/evt_mario.h>
 #include <spm/evt_msg.h>
-#include <spm/evt_mario.h>
 #include <spm/evt_item.h>
+#include <spm/mapdrv.h>
 #include <spm/itemdrv.h>
 #include <spm/evtmgr.h>
+#include <spm/effdrv.h>
+#include "mod.h"
 #include <spm/system.h>
 #include <spm/mario.h>
 #include <spm/spmario.h>
 #include <wii/os.h>
+#include <wii/mtx.h>
 #include <msl/math.h>
 #include <msl/stdio.h>
 
@@ -69,146 +72,266 @@ USER_FUNC(spm::evt_mario::evt_mario_key_on)
 RETURN()
 EVT_END()
 
-COMMAND(CMD_ITEM, item, "Gives mario an item. (item itemId)", 1, {
-    wii::os::OSReport("itemId %s\n", args[0]);
-    s32 itemId = strtoul(args[0], NULL, 10);
-    wii::os::OSReport("itemId %d\n", itemId);
-    spm::evtmgr::EvtEntry* evt = spm::evtmgr::evtEntry(give_ap_item, 0, 0);
-    evt->lw[0] = itemId;
+//param helper
+struct Params
+{
+    int ints[16];
+    float floats[16];
+    double doubles[16];
+    void* pointers[16];
 
-    return 1;
-})
+    const char* strings[16];
+    u16 stringLens[16];
 
-COMMAND(CMD_IDX, idx, "Sets the current item index. (idx index)", 1, {
-    wii::os::OSReport("idx %s\n", args[0]);
-    s32 idx = strtoul(args[0], NULL, 10);
-    wii::os::OSReport("idx %d\n", idx);
+    int nInts;
+    int nFloats;
+    int nDoubles;
+    int nStrings;
+    int nPtrs;
 
-    *s_lastItemIdx = idx;
+    bool valid;
+};
 
-    return 1;
-})
+Params payloadProcess(const u8* payload, size_t payloadLen)
+{
+    Params params;
 
-COMMAND(CMD_rIDX, ridx, "Reads the current item index. (ridx)", 0, {
-    wii::os::OSReport("ridx\n");
+    params.nInts = 0;
+    params.nFloats = 0;
+    params.nDoubles = 0;
+    params.nStrings = 0;
+    params.nPtrs = 0;
+    params.valid = true;
 
-    u32 idx = *s_lastItemIdx;
+    const u8* p = payload;
+    const u8* end = payload + payloadLen;
 
-    msl::string::memcpy((void*)response, &idx, sizeof(u32));
-    return sizeof(u32);
-})
-
-COMMAND(CMD_rBUSY, rbusy, "Reads whether Mario is busy (i.e., loading zone/item-acceptance menu). (rbusy)", 0, {
-    wii::os::OSReport("rbusy\n");
-
-    bool busy = spm::mario::marioKeyOffChk();
-
-    msl::string::memcpy((void*)response, &busy, sizeof(bool));
-    return sizeof(bool);
-})
-
-u32 handleItemBinary(
-    const u8* payload,
-    size_t payloadLen,
-    u8* response,
-    size_t responseSize
-) {
-    if (payloadLen < (sizeof(u32) + sizeof(u16))) {
-        wii::os::OSReport("CMD_ITEM: payload too small (%zu)\n", payloadLen);
-        return 0;
-    }
-
-    u32 idx;
-    u16 itemId;
-    msl::string::memcpy(&idx, payload + 0, sizeof(u32));
-    msl::string::memcpy(&itemId, payload + sizeof(u32), sizeof(u16));
-
-    u16 itemState;
-    // DUPLICATE / OUT-OF-ORDER GUARD
-    if (idx != (*s_lastItemIdx + 1)) {
-        itemState = 8; // Error code for duplicate / out-of-order
-        msl::string::memcpy((void*)response, &itemState, sizeof(u16));
-        return sizeof(u16);
-    
-    } else {
-    if (spm::mario::marioKeyOffChk())
+    while(p < end)
     {
-        itemState = 9; // Error code for busy
-        msl::string::memcpy((void*)response, &itemState, sizeof(u16));
-        return sizeof(u16);
+        char t = *p++;
+
+        switch(t)
+        {
+            case 'i':
+            {
+                if(p+4 > end) { params.valid=false; return params; }
+
+                params.ints[params.nInts++] =
+                (p[0] << 24) |
+                (p[1] << 16) |
+                (p[2] << 8)  |
+                (p[3]);
+
+                p += 4;
+                break;
+            }
+
+            case 'f':
+            {
+                if(p+4 > end) { params.valid=false; return params; }
+
+                u32 v =
+                (p[0] << 24) |
+                (p[1] << 16) |
+                (p[2] << 8)  |
+                (p[3]);
+
+                params.floats[params.nFloats++] =
+                    *(float*)&v;
+
+                p += 4;
+                break;
+            }
+
+            case 'd':
+            {
+                if(p+8 > end) { params.valid=false; return params; }
+
+                u64 v =
+                ((u64)p[0] << 56) |
+                ((u64)p[1] << 48) |
+                ((u64)p[2] << 40) |
+                ((u64)p[3] << 32) |
+                ((u64)p[4] << 24) |
+                ((u64)p[5] << 16) |
+                ((u64)p[6] << 8)  |
+                ((u64)p[7]);
+
+                params.doubles[params.nDoubles++] =
+                    *(double*)&v;
+
+                p += 8;
+                break;
+            }
+
+            case 's':
+            {
+                if(p+2 > end) { params.valid=false; return params; }
+
+                u16 len = *(u16*)p;
+                p += 2;
+
+                if(p+len > end) { params.valid=false; return params; }
+
+                params.strings[params.nStrings] =
+                    (char*)p;
+
+                params.stringLens[params.nStrings] =
+                    len;
+
+                params.nStrings++;
+
+                p += len;
+
+                break;
+            }
+
+            default:
+            {
+                params.valid = false;
+                return params;
+            }
+        }
     }
 
-        // Accept and advance
-        *s_lastItemIdx = idx;
+    return params;
+}
+
+//Symbols
+
+//Help Command
+    COMMAND(CMD_HELP, help, "Returns the arg(s) for command id in Payload. (help categoryId commandId)", 
+        {
+            if (payloadLen < 2) {
+                wii::os::OSReport("CMD_HELP: payload too small (%zu)\n", payloadLen);
+                return 0;
+            }
+
+            u8 categoryId = payload[0];
+            u8 commandId = payload[1];
+
+            CommandId fullId = (CommandId)((categoryId << 8) | commandId);
+
+            auto cmd = CommandManager::Instance()->findCommandById(fullId);
+
+            if (!cmd) {
+                return msl::stdio::snprintf(
+                    (char*)response,
+                    responseSize,
+                    "Unknown command %d:%d",
+                    categoryId,
+                    commandId
+                );
+            }
+
+            return msl::stdio::snprintf(
+                (char*)response,
+                responseSize,
+                "%s",
+                cmd->getHelpMsg()
+            );
+        });
+
+//Read Commands
+    
+    COMMAND(CMD_rIDX, ridx, "Reads the current item index. (ridx)", 
+        {
+            wii::os::OSReport("CMD_rIDX: reading idx\n");
+
+            u32 idx = *s_lastItemIdx;
+
+            msl::string::memcpy((void*)response, &idx, sizeof(u32));
+            return sizeof(u32);
+        });
+
+    COMMAND(CMD_rBUSY, rbusy, "Reads whether Mario is busy (i.e., loading zone/item-acceptance menu). (rbusy)", 
+        {
+            wii::os::OSReport("CMD_rBUSY: reading busy\n");
+
+            bool busy = spm::mario::marioKeyOffChk();
+
+            u32 busyValue = busy ? 1 : 0;
+            msl::string::memcpy((void*)response, &busyValue, sizeof(u32));
+            return sizeof(u32);
+        });
+
+//Base Commands
+    COMMAND(CMD_ITEM, item, "Gives mario an item. (item itemId)", 
+    {
+        Params params =
+        payloadProcess(payload, payloadLen);
+
+        if(!params.valid || params.nInts < 1) 
+            {
+                return msl::stdio::snprintf(
+                    (char*)response,
+                    responseSize,
+                    "%s",
+                    item.getHelpMsg()
+                );
+            };
+
+        if (spm::mario::marioKeyOffChk())
+            {
+                return msl::stdio::snprintf(
+                    (char*)response,
+                    responseSize,
+                    "Mario busy"
+                );
+            }
 
         spm::mario::marioKeyOff();
+
+        int itemId = params.ints[0];
+        wii::os::OSReport("CMD_ITEM: giving item id=%u\n", itemId);
         spm::evtmgr::EvtEntry* evt = spm::evtmgr::evtEntry(give_ap_item, 0, 0);
-        evt->lw[0] = (s32)itemId;
+        if (!evt)
+            {
+                return msl::stdio::snprintf(
+                    (char*)response,
+                    responseSize,
+                    "evtEntry failed"
+                );
+            }
 
-        if (responseSize >= sizeof(u16)) {
-            itemState = 1; // Success
-            msl::string::memcpy((void*)response, &itemState, sizeof(u16));
-            return sizeof(u16);
-        }
-        itemState = 0; // response too big
-        msl::string::memcpy((void*)response, &itemState, sizeof(u16));
-        return sizeof(u16);
-    } 
-}
+        evt->lw[0] = (u16)itemId;
 
-u32 handleIdxBinary(
-    const u8* payload,
-    size_t payloadLen,
-    u8* response,
-    size_t responseSize
-) {
-    if (payloadLen < sizeof(u32)) {
-        wii::os::OSReport("CMD_IDX: payload too small (%zu)\n", payloadLen);
-        return 0;
-    }
-
-    u32 idx;
-    msl::string::memcpy(&idx, payload + 0, sizeof(u32));
-    *s_lastItemIdx = idx;
-
-    wii::os::OSReport("CMD_IDX: received idx=%u\n", idx);
-    char msg[128];
-    msl::stdio::snprintf(
-            msg,
-            sizeof(msg),
-            "CMD_IDX: received idx=%u\n",
-            idx
+        char msg[128];
+        return msl::stdio::snprintf(
+            (char*)response,
+            responseSize,
+            "CMD_ITEM: received item id=%u\n",
+            itemId
         );
+    });
 
-    u32 len = strlen(msg);
-    memcpy(response, &len, sizeof(len));
-    memcpy(response + sizeof(len), msg, len);
-    return sizeof(len) + len;
-}
+    COMMAND(CMD_IDX, idx, "Sets the current item index. (idx index)", 
+        {
+            Params params =
+            payloadProcess(payload, payloadLen);
+            if(!params.valid || params.nInts < 1) 
+                {
+                    return msl::stdio::snprintf(
+                        (char*)response,
+                        responseSize,
+                        "%s",
+                        idx.getHelpMsg()
+                    );
+                };
 
-u32 readMemoryIdx(
-    u8* response,
-    size_t responseSize
-) {
-    wii::os::OSReport("CMD_rIDX: reading idx\n");
+            u32 index = params.ints[0];
+            wii::os::OSReport("CMD_IDX: setting idx to %u\n", index);
+            *s_lastItemIdx = index;
 
-    u32 idx = *s_lastItemIdx;
 
-    msl::string::memcpy((void*)response, &idx, sizeof(u32));
-    return sizeof(u32);
-}
-
-u32 readMemoryBusy(
-    u8* response,
-    size_t responseSize
-) {
-    wii::os::OSReport("CMD_rBUSY: reading busy\n");
-
-    bool busy = spm::mario::marioKeyOffChk();
-
-    msl::string::memcpy((void*)response, &busy, sizeof(bool));
-    return sizeof(bool);
-}
+            char msg[128];
+            return msl::stdio::snprintf(
+                (char*)response,
+                responseSize,
+                "CMD_IDX: received idx=%u\n",
+                index
+            );
+        });
 
 EVT_DEFINE_USER_FUNC(evt_deref) {
     s32 addr = spm::evtmgr_cmd::evtGetValue(evt, evt->pCurData[0]);

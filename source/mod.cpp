@@ -13,11 +13,15 @@
 #include <spm/evt_item.h>
 #include <spm/itemdrv.h>
 #include <spm/evtmgr.h>
+#include <spm/effdrv.h>
+#include <spm/eff_sub.h>
+#include <spm/memory.h>
 #include <spm/seqdef.h>
 #include <spm/item_data.h>
 #include <spm/mario_pouch.h>
 #include <spm/evt_pouch.h>
 #include <spm/evt_seq.h>
+#include <spm/filemgr.h>
 #include <spm/map_data.h>
 #include <spm/spmario.h>
 #include <wii/os/OSError.h>
@@ -45,7 +49,7 @@ static void seq_titleMainOverride(spm::seqdrv::SeqWork *wp)
 {
     wii::gx::GXColor _colour {0, 255, 0, 255};
     f32 scale = 0.8f;
-    char msg[128];
+    static char msg[128];
     u32 ip = Mynet_gethostip();
     msl::stdio::snprintf(msg, 128, "%d.%d.%d.%d\n", ip >> 24 & 0xff, ip >> 16 & 0xff, ip >> 8 & 0xff, ip & 0xff);
     spm::fontmgr::FontDrawStart();
@@ -77,26 +81,41 @@ static void titleScreenCustomTextPatch()
   }
 
   bool itemAdded = false; 
+  bool ranOnce = false;
 
   bool new_itemCollectPouchItem(spm::itemdrv::ItemEntry *item)
   {
-    wii::os::OSReport("GSWF: %d\n", item->switchNumber);
-    if (item->switchNumber != 0x0)
-    {
-      bool ret = spm::itemdrv::itemCollectPouchItem(item);
-      if (!itemAdded)
-      {
-        addToGswfStack(item);
-        itemAdded = true;
-      }
-      if (ret)
-      {
-        itemAdded = false;
-      }
-      return ret;
+    //wii::os::OSReport("GSWF: %d\n", item->switchNumber);
+      if (item->switchNumber != 0x0)
+        {
+          bool ret = spm::itemdrv::itemCollectPouchItem(item);
+          if (!itemAdded)
+          {
+            addToGswfStack(item);
+            itemAdded = true;
+          }
+          if (ret)
+          {
+            itemAdded = false;
+          }
+          return ret;
+        }
+        else {
+          if (!ranOnce)
+          {
+            ranOnce = true;
+            wii::os::OSReport("Added item with switch %d to stack\n", item->switchNumber);
+            static char msg[128];
+            msl::stdio::snprintf(msg, 128, "Collected item ID %d\n", item->type);
+
+            NetMemoryAccess::enqueuePacket(0x1001, msg, msl::string::strlen(msg) + 1);
+
+            wii::os::OSReport("Queued one test packet.\n");
+          }
+        }
+
+        return spm::itemdrv::itemCollectPouchItem(item);
     }
-    return spm::itemdrv::itemCollectPouchItem(item);
-  }
 
 spm::evtmgr::EvtVar convertGswfToIndex(spm::evtmgr::EvtVar switchNumber)
 {
@@ -129,6 +148,7 @@ spm::evtmgr::EvtVar convertGswfToIndex(spm::evtmgr::EvtVar switchNumber)
     }
     return itemEntry(name, type, behaviour, x, y, z, pickupScript, switchNumber);
   }
+
 
   EVT_BEGIN(insertNop)
     SET(LW(0), LW(0))
@@ -218,23 +238,21 @@ spm::evtmgr::EvtVar convertGswfToIndex(spm::evtmgr::EvtVar switchNumber)
 }
 
 void main()
-{
-    wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
-    
-    NetMemoryAccess::init();
-    evtpatch::evtmgrExtensionInit();
-    evt_patches();
-    msgpatch::msgpatchMain();
-    msgpatch::msgpatchAddEntry("msg_AP_item_name", "AP Item", false);
-    msgpatch::msgpatchAddEntry("msg_AP_item_desc", "A valuable object from another dimension.", false);
-    spm::item_data::itemDataTable[45].nameMsg = "msg_AP_item_name";
-    spm::item_data::itemDataTable[45].descMsg = "msg_AP_item_desc";
-    spm::item_data::itemDataTable[45].iconId = 324;
-    pouchAddItem = patch::hookFunction(spm::mario_pouch::pouchAddItem, new_pouchAddItem);
-    itemEntry = patch::hookFunction(spm::itemdrv::itemEntry, new_itemEntry);
-    writeBranchLink(spm::itemdrv::itemMain, 0xA18, new_itemCollectPouchItem);
-
-    titleScreenCustomTextPatch();
-}
-
+  {
+      wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
+      
+      NetMemoryAccess::init();
+      evtpatch::evtmgrExtensionInit();
+      evt_patches();
+      msgpatch::msgpatchMain();
+      msgpatch::msgpatchAddEntry("msg_AP_item_name", "AP Item", false);
+      msgpatch::msgpatchAddEntry("msg_AP_item_desc", "A valuable object from another dimension.", false);
+      spm::item_data::itemDataTable[45].nameMsg = "msg_AP_item_name";
+      spm::item_data::itemDataTable[45].descMsg = "msg_AP_item_desc";
+      spm::item_data::itemDataTable[45].iconId = 324;
+      pouchAddItem = patch::hookFunction(spm::mario_pouch::pouchAddItem, new_pouchAddItem);
+      itemEntry = patch::hookFunction(spm::itemdrv::itemEntry, new_itemEntry);
+      writeBranchLink(spm::itemdrv::itemMain, 0xA18, new_itemCollectPouchItem);
+      titleScreenCustomTextPatch();
+  }
 }

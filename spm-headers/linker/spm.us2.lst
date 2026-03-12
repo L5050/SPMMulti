@@ -2,6 +2,9 @@
 800000e4:OS_CURRENT_THREAD
 800030c8:firstRel
 800030cc:lastRel
+802739a0:OSInitMutex
+802739d8:OSLockMutex
+80273ab4:OSUnlockMutex
 
 // Automatically generated from spm.eu0.lst
 80004000:memcpy
