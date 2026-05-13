@@ -14,6 +14,7 @@
 #include "romfontexpand.h"
 #include "errno.h"
 
+#include <spm/hud.h>
 #include <spm/setup_data.h>
 #include <spm/item_event_data.h>
 #include <spm/npcdrv.h>
@@ -47,6 +48,7 @@ namespace mod {
   bool shocked = false;
   spm::evtmgr::EvtScriptCode* thunderRageScript = spm::item_event_data::itemEventDataTable[2].useScript;
   u32 sockfd;
+  void (*hudLoadStats)(void);
 
   struct Player {
     int clientID;
@@ -372,7 +374,7 @@ namespace mod {
       if (varCheck == true) { //update position
 
         u8 responseBuffer[1024];
-        const char postBuffer[500];
+        char postBuffer[500];
 
         spm::mario::MarioWork * mwpp = spm::mario::marioGetPtr();
         spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
@@ -411,7 +413,7 @@ namespace mod {
         checkForPlayersTimer = 0;
 
         u8 responseBuffer[1024];
-        const char postBuffer[500];
+        char postBuffer[500];
 
         msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "checkForPlayers.%d.%d.%d.%s.%s",
             spm::spmario::gp->gsw[2002],
@@ -478,7 +480,7 @@ namespace mod {
             s32 playerStats[3]; // Array to store the three integers (attack, maxHP, currentHP)
             f32 posArray[3]; //Array to store position
             u8 responseBuffer[512];
-            const char postBuffer[1024];
+            char postBuffer[1024];
 
             msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "getPlayerInfo.%d.%d.%d.%s.%s.%d",
               spm::spmario::gp -> gsw[2002],
@@ -586,7 +588,7 @@ namespace mod {
       if (numOfClients >= 1) {
         for (int i = 0; i < numOfClients; ++i) {
           u8 responseBuffer[512];
-          const char postBuffer[1024];
+          char postBuffer[1024];
           msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "getPlayerPos.%d.%d.%d.%s.%s.%d",
             spm::spmario::gp -> gsw[2002],
             spm::spmario::gp -> gsw[2000],
@@ -666,7 +668,7 @@ namespace mod {
       if (updateStatsTimer >= 60) {
         updateStatsTimer = 0;
         u8 responseBuffer[1024];
-        const char postBuffer[1024];
+        char postBuffer[1024];
 
         spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
         msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "updateStats.%d.%d.%d.%s.%d.%d.%d.%d.%d",
@@ -759,13 +761,13 @@ namespace mod {
     HTTPResponse_t response = {
       0
     };
-    u8 responseBuffer = new u8[1024];
+    u8 responseBuffer[1024];
     response.pBuffer = responseBuffer;
     response.bufferLen = 1024;
 
     //u8 postBuffer = new u8[1024];
 
-    const char postBuffer[1024];
+    char postBuffer[1024];
     spm::spmario::gp -> gsw[2000] = spm::system::irand(255);
     spm::spmario::gp -> gsw[2001] = spm::system::irand(255);
     spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
@@ -804,7 +806,7 @@ namespace mod {
     HTTPResponse_t response = {
       0
     };
-    u8 responseBuffer = new u8[1024];
+    u8 responseBuffer[1024];
     response.pBuffer = responseBuffer;
     response.bufferLen = 1024;
 
@@ -859,6 +861,13 @@ namespace mod {
     spm::npcdrv::NPCEntry * ownerNpc = (spm::npcdrv::NPCEntry *)evtEntry -> ownerNPC;
     spm::npcdrv::func_801ca1a4(ownerNpc, &ownerNpc -> m_Anim);
     return 2;
+}
+
+void new_hudLoadStats()
+{
+  registerPlayer();
+  wii::os::OSReport("SPM Door Rando has loaded %s\n", spm::spmario::gp->saveName);
+  return hudLoadStats();
 }
 
   void (*seq_gameExit)(spm::seqdrv::SeqWork *param_1);
@@ -968,6 +977,7 @@ void main()
     //patchGameExit();
     //tryChainload();
     patchItems();
+    hudLoadStats = patch::hookFunction(spm::hud::hudLoadStats, new_hudLoadStats);
 }
 
 }
