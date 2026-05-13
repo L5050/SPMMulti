@@ -36,6 +36,7 @@
 #include <wii/os.h>
 #include <msl/stdio.h>
 #include <msl/string.h>
+#include <cmath>
 
 namespace mod {
 

@@ -84,7 +84,7 @@ typedef enum
  *     result = JSON_Validate( buffer, bufferLength );
  *
  *     // JSON document is valid.
- *     SPM_ASSERT( result == JSONSuccess );
+ *     assert( result == JSONSuccess );
  * @endcode
  */
 /* @[declare_json_validate] */

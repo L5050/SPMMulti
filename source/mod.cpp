@@ -384,7 +384,7 @@ namespace mod {
         if (pouch_ptr -> hp == 0) {
           motionId = 6000;
         }
-        snprintf(postBuffer, sizeof(postBuffer), "updatePosition.%d.%d.%d.%s.%d.%d.%d.%s.%d",
+        msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "updatePosition.%d.%d.%d.%s.%d.%d.%d.%s.%d",
             spm::spmario::gp->gsw[2002],
             spm::spmario::gp->gsw[2000],
             spm::spmario::gp->gsw[2001],
@@ -396,7 +396,7 @@ namespace mod {
             motionId
         );
 
-        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
@@ -413,7 +413,7 @@ namespace mod {
         u8 responseBuffer[1024];
         const char postBuffer[500];
 
-        snprintf(postBuffer, sizeof(postBuffer), "checkForPlayers.%d.%d.%d.%s.%s",
+        msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "checkForPlayers.%d.%d.%d.%s.%s",
             spm::spmario::gp->gsw[2002],
             spm::spmario::gp->gsw[2000],
             spm::spmario::gp->gsw[2001],
@@ -421,7 +421,7 @@ namespace mod {
             spm::spmario::gp->mapName
         );
 
-        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
@@ -480,7 +480,7 @@ namespace mod {
             u8 responseBuffer[512];
             const char postBuffer[1024];
 
-            snprintf(postBuffer, sizeof(postBuffer), "getPlayerInfo.%d.%d.%d.%s.%s.%d",
+            msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "getPlayerInfo.%d.%d.%d.%s.%s.%d",
               spm::spmario::gp -> gsw[2002],
               spm::spmario::gp -> gsw[2000],
               spm::spmario::gp -> gsw[2001],
@@ -488,7 +488,7 @@ namespace mod {
               spm::spmario::gp -> mapName,
               joiningClients[i] // Replace any instance of evtEntry -> lw[4] with i
             );
-            s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+            s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
             // Ensure data was received
             if (responseBytes > 0) {
@@ -528,7 +528,7 @@ namespace mod {
             }
 
             u8 responseBuffer1[512];
-            snprintf(postBuffer, sizeof(postBuffer), "getPlayerPos.%d.%d.%d.%s.%s.%d",
+            msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "getPlayerPos.%d.%d.%d.%s.%s.%d",
               spm::spmario::gp -> gsw[2002],
               spm::spmario::gp -> gsw[2000],
               spm::spmario::gp -> gsw[2001],
@@ -536,7 +536,7 @@ namespace mod {
               spm::spmario::gp -> mapName,
               joiningClients[i]
             );
-            responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer1, 1024);
+            responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer1, 1024);
 
             // Ensure data was received
             if (responseBytes > 0) {
@@ -556,7 +556,7 @@ namespace mod {
 
                         // Interpret the 32-bit integer as a float
                         f32 floatValue;
-                        memcpy(&floatValue, &rawBytes, sizeof(f32));  // Copy raw bytes into float
+                        msl::string::memcpy(&floatValue, &rawBytes, sizeof(f32));  // Copy raw bytes into float
 
                         // Log and assign the float value
                         posArray[(i / 4)] = floatValue;
@@ -587,7 +587,7 @@ namespace mod {
         for (int i = 0; i < numOfClients; ++i) {
           u8 responseBuffer[512];
           const char postBuffer[1024];
-          snprintf(postBuffer, sizeof(postBuffer), "getPlayerPos.%d.%d.%d.%s.%s.%d",
+          msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "getPlayerPos.%d.%d.%d.%s.%s.%d",
             spm::spmario::gp -> gsw[2002],
             spm::spmario::gp -> gsw[2000],
             spm::spmario::gp -> gsw[2001],
@@ -595,7 +595,7 @@ namespace mod {
             spm::spmario::gp -> mapName,
             clients[i].clientID
           );
-          s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+          s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
           // Ensure data was received
           if (responseBytes > 0) {
@@ -618,7 +618,7 @@ namespace mod {
 
                       // Interpret the 32-bit integer as a float
                       f32 floatValue;
-                      memcpy(&floatValue, &rawBytes, sizeof(f32));  // Copy raw bytes into float
+                      msl::string::memcpy(&floatValue, &rawBytes, sizeof(f32));  // Copy raw bytes into float
 
                       // Log and assign the float value
                       posArray[(i / 4)] = floatValue;  // Store in posArray
@@ -669,7 +669,7 @@ namespace mod {
         const char postBuffer[1024];
 
         spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
-        snprintf(postBuffer, sizeof(postBuffer), "updateStats.%d.%d.%d.%s.%d.%d.%d.%d.%d",
+        msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "updateStats.%d.%d.%d.%s.%d.%d.%d.%d.%d",
           spm::spmario::gp -> gsw[2002],
           spm::spmario::gp -> gsw[2000],
           spm::spmario::gp -> gsw[2001],
@@ -681,7 +681,7 @@ namespace mod {
           spm::spmario::gp -> gsw0
         );
 
-        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
@@ -769,7 +769,7 @@ namespace mod {
     spm::spmario::gp -> gsw[2000] = spm::system::irand(255);
     spm::spmario::gp -> gsw[2001] = spm::system::irand(255);
     spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
-    snprintf(postBuffer, sizeof(postBuffer), "%d.%d.%s.%d.%d.%d.%d.%d",
+    msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "%d.%d.%s.%d.%d.%d.%d.%d",
       spm::spmario::gp -> gsw[2000],
       spm::spmario::gp -> gsw[2001],
       spm::spmario::gp -> saveName,
@@ -781,18 +781,18 @@ namespace mod {
     );
     wii::os::OSReport("Level: %d\n", pouch_ptr -> level);
 
-    HTTPStatus_t mystatus = HTTPSendRequest("192.168.0.113", 3000, "/register", HTTP_METHOD_POST, postBuffer, strlen(postBuffer), & response);
+    HTTPStatus_t mystatus = HTTPSendRequest("192.168.0.113", 3000, "/register", HTTP_METHOD_POST, postBuffer, msl::string::strlen(postBuffer), & response);
     wii::os::OSReport("Status: %d\n", mystatus);
     //wii::os::OSReport("Status: %s\n", response.pBuffer);
     //get rid of the garbage data
     char dest[response.bufferLen + 1]; // +1 for the null terminator
-    strncpy(dest, (const char * ) response.pBuffer, response.bufferLen);
+    msl::string::strncpy(dest, (const char * ) response.pBuffer, response.bufferLen);
 
     const char * lastNewline = strrchr(dest, '\n');
     // Move the pointer to the first character after the last newline.
     const char * lastLine = lastNewline + 1;
     char dest1[response.bufferLen + 1];
-    strcpy(dest1, lastLine); // Copies the last line into the buffer.
+    msl::string::strcpy(dest1, lastLine); // Copies the last line into the buffer.
     spm::spmario::gp -> gsw[2002] = atoi(dest1);
     wii::os::OSReport("ClientID: %d\n", spm::spmario::gp -> gsw[2002]);
     HTTPFree( & response);
@@ -814,7 +814,7 @@ namespace mod {
     spm::mario_pouch::MarioPouchWork * pouch_ptr = spm::mario_pouch::pouchGetPtr();
     spm::mario::MarioWork * mwpp = spm::mario::marioGetPtr();
     wii::mtx::Vec3 pos = mwpp -> position;
-    snprintf(postBuffer, sizeof(postBuffer), "%d.%d.%d.%s.%d.%d.%d.%d.%d.%s.%d.%d.%d",
+    msl::stdio::snprintf(postBuffer, sizeof(postBuffer), "%d.%d.%d.%s.%d.%d.%d.%d.%d.%s.%d.%d.%d",
       spm::spmario::gp -> gsw[2000],
       spm::spmario::gp -> gsw[2001],
       spm::spmario::gp -> gsw[2002],
@@ -832,18 +832,18 @@ namespace mod {
 
     wii::os::OSReport("Position: %f %f %f\n", pos.x, pos.y, pos.z);
 
-    HTTPStatus_t mystatus = HTTPSendRequest("192.168.0.113", 3000, "/connect", HTTP_METHOD_POST, postBuffer, strlen(postBuffer), & response);
+    HTTPStatus_t mystatus = HTTPSendRequest("192.168.0.113", 3000, "/connect", HTTP_METHOD_POST, postBuffer, msl::string::strlen(postBuffer), & response);
     wii::os::OSReport("Status: %d\n", mystatus);
     //wii::os::OSReport("Status: %s\n", response.pBuffer);
     //get rid of the garbage data
     char dest[response.bufferLen + 1]; // +1 for the null terminator
-    strncpy(dest, (const char * ) response.pBuffer, response.bufferLen);
+    msl::string::strncpy(dest, (const char * ) response.pBuffer, response.bufferLen);
 
     const char * lastNewline = strrchr(dest, '\n');
     // Move the pointer to the first character after the last newline.
     const char * lastLine = lastNewline + 1;
     char dest1[response.bufferLen + 1];
-    strcpy(dest1, lastLine); // Copies the last line into the buffer.
+    msl::string::strcpy(dest1, lastLine); // Copies the last line into the buffer.
     isConnected = true;
     wii::os::OSReport("ClientID: %d\n", spm::spmario::gp -> gsw[2002]);
     HTTPFree( & response);
