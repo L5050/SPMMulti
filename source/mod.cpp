@@ -10,7 +10,6 @@
 #include "chainloader.h"
 #include "cutscene_helpers.h"
 #include "evtpatch.h"
-#include "exception.h"
 #include "evtdebug.h"
 #include "romfontexpand.h"
 #include "errno.h"
@@ -925,14 +924,14 @@ void patchScripts()
   evtpatch::hookEvt(transition_evt, 10, (spm::evtmgr::EvtScriptCode*)registerToServer);
   spm::map_data::MapData * he1_01_md = spm::map_data::mapDataPtr("he1_01");
   evtpatch::hookEvt(he1_01_md->initScript, 75, (spm::evtmgr::EvtScriptCode*)evt_connectToServer);
-  evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript6, 1, (spm::evtmgr::EvtScriptCode*)mariounk6);
-  evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].unkScript3, 71, (spm::evtmgr::EvtScriptCode*)mariounk3);
+  evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].deathScript, 1, (spm::evtmgr::EvtScriptCode*)mariounk6);
+  evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].onHitScript, 71, (spm::evtmgr::EvtScriptCode*)mariounk3);
 }
 
 void patchMario()
 {
-  spm::npcdrv::npcEnemyTemplates[422].unkScript7 = playerMainLogic;
-  spm::npcdrv::npcEnemyTemplates[422].unkScript2 = playerMainLogic;
+  spm::npcdrv::npcEnemyTemplates[422].atkScript = playerMainLogic;
+  spm::npcdrv::npcEnemyTemplates[422].moveScript = playerMainLogic;
   spm::npcdrv::npcTribes[453].killXp = 0;
   spm::npcdrv::npcTribes[453].stylishXp = 0;
   spm::npcdrv::npcTribes[453].voltShroomStunTime = 0;
@@ -959,7 +958,6 @@ void main()
     wii::os::OSReport("SPM Rel Loader: the mod has ran!\n");
     checkForDolphin();
     romfontExpand();
-    exceptionPatch(); // Seeky's exception handler from Practice Codes
     evtDebugPatch();
     evtpatch::evtmgrExtensionInit(); // Initialize EVT scripting extension
     NetMemoryAccess::init();

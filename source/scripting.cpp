@@ -7,7 +7,6 @@
 #include "cutscene_helpers.h"
 #include "evt_cmd.h"
 #include "evtpatch.h"
-#include "exception.h"
 #include "evtdebug.h"
 
 #include <spm/setup_data.h>
@@ -205,7 +204,7 @@ s32 activateTC(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
 s32 addCloudToList(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
   char * tcName  = "TC";
   spm::npcdrv::NPCEntry * tc = spm::npcdrv::npcNameToPtr(tcName);
-  spm::item_event_data::item_event_data_wp -> wp -> ItemNpcRef.npcId = tc -> id;
+  spm::item_event_data::item_event_data_wp-> wp->ItemNpcRef->npcId = tc->id;
   return 2;
 }
 

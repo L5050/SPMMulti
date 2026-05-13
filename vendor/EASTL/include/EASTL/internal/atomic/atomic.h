@@ -20,7 +20,7 @@
 #include "atomic_casts.h"
 
 #include "atomic_memory_order.h"
-#include "atomic_SPM_ASSERTs.h"
+#include "atomic_asserts.h"
 
 #include "atomic_size_aligned.h"
 #include "atomic_base_width.h"
