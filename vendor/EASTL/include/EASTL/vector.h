@@ -21,7 +21,7 @@
 //    - vector has an explicit data() method for obtaining a pointer to storage 
 //      which is safe to call even if the block is empty. This avoids the 
 //      common &v[0], &v.front(), and &*v.begin() constructs that trigger false 
-//      asserts in STL debugging modes.
+//      SPM_ASSERTs in STL debugging modes.
 //    - vector data is guaranteed to be contiguous.
 //    - vector has a set_capacity() function which frees excess capacity. 
 //      The only way to do this with std::vector is via the cryptic non-obvious 

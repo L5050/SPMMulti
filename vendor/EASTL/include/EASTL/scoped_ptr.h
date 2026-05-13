@@ -147,7 +147,7 @@ namespace eastl
 		///    int x = *ptr;
 		typename add_lvalue_reference<T>::type operator*() const
 		{
-			// assert(mpValue);
+			// SPM_ASSERT(mpValue);
 			return *mpValue;
 		}
 
@@ -159,7 +159,7 @@ namespace eastl
 		///    ptr->DoSomething();
 		T* operator->() const
 		{
-			// assert(mpValue);
+			// SPM_ASSERT(mpValue);
 			return mpValue;
 		}
 
@@ -200,7 +200,7 @@ namespace eastl
 		/// the owned pointer is null. Some compilers require this and some don't.
 		///    scoped_ptr<int> ptr(new int(3));
 		///    if(!ptr)
-		///        assert(false);
+		///        SPM_ASSERT(false);
 		bool operator!() const
 		{
 			return (mpValue == NULL);
@@ -244,13 +244,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-

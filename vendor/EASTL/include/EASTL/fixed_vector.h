@@ -616,15 +616,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-
-
-

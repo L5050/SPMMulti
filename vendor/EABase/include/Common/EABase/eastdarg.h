@@ -19,10 +19,10 @@
 // This applies to macros only and not functions.
 //
 // Example usage:
-//    assert(VA_ARG_COUNT() == 0);
-//    assert(VA_ARG_COUNT(a) == 1);
-//    assert(VA_ARG_COUNT(a, b) == 2);
-//    assert(VA_ARG_COUNT(a, b, c) == 3);
+//    SPM_ASSERT(VA_ARG_COUNT() == 0);
+//    SPM_ASSERT(VA_ARG_COUNT(a) == 1);
+//    SPM_ASSERT(VA_ARG_COUNT(a, b) == 2);
+//    SPM_ASSERT(VA_ARG_COUNT(a, b, c) == 3);
 //
 #if !defined(VA_ARG_COUNT)
 	#define VA_ARG_COUNT(...)                         VA_ARG_COUNT_II((VA_ARG_COUNT_PREFIX_ ## __VA_ARGS__ ## _VA_ARG_COUNT_POSTFIX,32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0))
@@ -94,6 +94,3 @@
 
 
 #endif /* Header include guard */
-
-
-

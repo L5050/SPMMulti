@@ -128,7 +128,7 @@ namespace eastl
 		///    int x = ptr[2];
 		typename add_lvalue_reference<T>::type operator[](ptrdiff_t i) const
 		{
-			// assert(mpArray && (i >= 0));
+			// SPM_ASSERT(mpArray && (i >= 0));
 			return mpArray[i];
 		}
 
@@ -167,7 +167,7 @@ namespace eastl
 		/// the owned pointer is null. Some compilers require this and some don't.
 		///    scoped_array<int> ptr(new int(3));
 		///    if(!ptr)
-		///        assert(false);
+		///        SPM_ASSERT(false);
 		bool operator!() const
 		{
 			return (mpArray == NULL);
@@ -227,11 +227,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-

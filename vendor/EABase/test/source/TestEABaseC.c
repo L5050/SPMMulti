@@ -16,7 +16,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
-#include <assert.h>
+#include <SPM_ASSERT.h>
 #include <math.h>
 
 #if defined(EA_COMPILER_MSVC) && defined(EA_PLATFORM_MICROSOFT)

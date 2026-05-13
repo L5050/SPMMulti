@@ -245,11 +245,11 @@ namespace eastl
 					// throw exeption if exceptions enabled
 					throw std::out_of_range("invalid hash_map<K, T> key");
 				#else
-					// assert false if asserts enabled
+					// SPM_ASSERT false if SPM_ASSERTs enabled
 					EASTL_ASSERT_MSG(false, "invalid hash_map<K, T> key");
 				#endif
 			}
-			// undefined behaviour if exceptions and asserts are disabled and it == end()
+			// undefined behaviour if exceptions and SPM_ASSERTs are disabled and it == end()
 			return it->second;
 		}
 
@@ -264,11 +264,11 @@ namespace eastl
 					// throw exeption if exceptions enabled
 					throw std::out_of_range("invalid hash_map<K, T> key");
 				#else
-					// assert false if asserts enabled
+					// SPM_ASSERT false if SPM_ASSERTs enabled
 					EASTL_ASSERT_MSG(false, "invalid hash_map<K, T> key");
 				#endif
 			}
-			// undefined behaviour if exceptions and asserts are disabled and it == end()
+			// undefined behaviour if exceptions and SPM_ASSERTs are disabled and it == end()
 			return it->second;
 		}
 

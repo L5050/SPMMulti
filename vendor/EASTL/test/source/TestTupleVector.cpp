@@ -1536,5 +1536,3 @@ int TestTupleVector()
 
 	return nErrorCount;
 }
-
-

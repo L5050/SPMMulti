@@ -784,7 +784,7 @@ There are three primary uses of type traits:</p>
 <ul>
   <li>Allowing for optimized operations on some data types.</li>
   <li>Allowing for different logic pathways based on data types.</li>
-  <li>Allowing for compile-type assertions about data type expectations.</li>
+  <li>Allowing for compile-type SPM_ASSERTions about data type expectations.</li>
 </ul>
 <span class="faq-answer">Most of the type traits are automatically detected and implemented by the compiler. However, EASTL&nbsp;allows for the user to explicitly give the compiler hints about type traits that the compiler cannot know, via the EASTL_DECLARE declarations. If the user has a class that is relocatable (i.e. can safely use memcpy to copy values), the user can use the EASTL_DECLARE_TRIVIAL_RELOCATE declaration to tell the compiler that the class can be copied via memcpy. This will automatically significantly speed up some containers and algorithms that use that class.<br>
 <br>
@@ -792,7 +792,7 @@ Here is an example of using type traits to tell if a value is a floating point v
 </span>
 <div class="code-example" style="margin-left: 40px; font-family: Courier New;"><small>template &lt;typename T&gt;<br>
   DoSomething(T t) {<br>
-&nbsp; &nbsp; assert(is_floating_point&lt;T&gt;::value);<br>
+&nbsp; &nbsp; SPM_ASSERT(is_floating_point&lt;T&gt;::value);<br>
   }</small></div>
 <span class="faq-answer">Here is an example of declaring a class as relocatable and using it in a vector.<br>
 </span>

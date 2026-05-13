@@ -89,7 +89,7 @@ int TestBitset()
 			EATEST_VERIFY(b0.to_uint32() == 0x00000000);
 			EATEST_VERIFY(b0.to_uint64() == 0x00000000);
 
-			// Disabled because currently bitset<0> instances can't be modified without triggering asserts.
+			// Disabled because currently bitset<0> instances can't be modified without triggering SPM_ASSERTs.
 			//b0.from_uint32(0x10101010);
 			//EATEST_VERIFY(b0.to_uint32() == 0x00000000);
 			//b0.from_uint64(UINT64_C(0x1010101010101010));
@@ -1306,22 +1306,3 @@ int TestBitset()
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

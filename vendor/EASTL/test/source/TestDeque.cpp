@@ -976,27 +976,3 @@ int TestDeque()
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -565,15 +565,3 @@ int TestIterator()
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-
-
-
-

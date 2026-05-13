@@ -209,7 +209,7 @@ namespace eastl
 		if (!b)
 			throw bad_variant_access();
 	#elif EASTL_ASSERT_ENABLED
-		EASTL_ASSERT_MSG(b, "eastl::bad_variant_access assert");
+		EASTL_ASSERT_MSG(b, "eastl::bad_variant_access SPM_ASSERT");
 	#else
 		EA_UNUSED(b);
 	#endif
@@ -364,7 +364,7 @@ namespace eastl
 		template <typename T, typename... Args>
 		void set_as(Args&&... args)
 		{
-			// NOTE(rparolin): If this assert fires there is an EASTL problem picking the size of the local buffer which
+			// NOTE(rparolin): If this SPM_ASSERT fires there is an EASTL problem picking the size of the local buffer which
 			// variant_storage used to store types. The size selected should be large enough to hold the largest type in
 			// the user provided variant type-list.
 			static_assert(sizeof(aligned_storage_impl_t) >= sizeof(T), "T is larger than local buffer size");
@@ -379,7 +379,7 @@ namespace eastl
 		template <typename T, typename U, typename... Args>
 		void set_as(std::initializer_list<U> il, Args&&... args)
 		{
-			// NOTE(rparolin): If this assert fires there is an EASTL problem picking the size of the local buffer which
+			// NOTE(rparolin): If this SPM_ASSERT fires there is an EASTL problem picking the size of the local buffer which
 			// variant_storage used to store types. The size selected should be large enough to hold the largest type in
 			// the user provided variant type-list.
 			static_assert(sizeof(aligned_storage_impl_t) >= sizeof(T), "T is larger than local buffer size");
@@ -437,7 +437,7 @@ namespace eastl
 		template <typename T, typename... Args>
 		void set_as(Args&&... args)
 		{
-			// NOTE(rparolin): If this assert fires there is an EASTL problem picking the size of the local buffer which
+			// NOTE(rparolin): If this SPM_ASSERT fires there is an EASTL problem picking the size of the local buffer which
 			// variant_storage used to store types. The size selected should be large enough to hold the largest type in
 			// the user provided variant type-list.
 			static_assert(sizeof(aligned_storage_impl_t) >= sizeof(T), "T is larger than local buffer size");
@@ -449,7 +449,7 @@ namespace eastl
 		template <typename T, typename U, typename... Args>
 		void set_as(std::initializer_list<U> il, Args&&... args)
 		{
-			// NOTE(rparolin): If this assert fires there is an EASTL problem picking the size of the local buffer which
+			// NOTE(rparolin): If this SPM_ASSERT fires there is an EASTL problem picking the size of the local buffer which
 			// variant_storage used to store types. The size selected should be large enough to hold the largest type in
 			// the user provided variant type-list.
 			static_assert(sizeof(aligned_storage_impl_t) >= sizeof(T), "T is larger than local buffer size");

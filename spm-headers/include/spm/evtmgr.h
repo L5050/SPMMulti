@@ -12,7 +12,7 @@ CPP_WRAPPER(spm::evtmgr)
 USING(wii::os::OSTime)
 
 /*
-    Defines from asserts
+    Defines from SPM_ASSERTs
 */
 #define EVT_max 0x78
 #define EVT_ENTRY_MAX 0x80

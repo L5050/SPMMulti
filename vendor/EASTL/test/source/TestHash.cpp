@@ -451,7 +451,7 @@ int TestHash()
 		// ENABLE_IF_HASHCODE_U32(HashCodeT, const_iterator) find_by_hash(HashCodeT c) const
 		{
 			// NOTE(rparolin):
-			// these overloads of find_by_hash contains a static assert that forces a compiler error in the event it is
+			// these overloads of find_by_hash contains a static SPM_ASSERT that forces a compiler error in the event it is
 			// used with a hashtable configured to not cache the hash value in the node.
 		}
 
@@ -1491,12 +1491,3 @@ int TestHash()
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-

@@ -78,7 +78,7 @@ void* operator new[](size_t size, const char* pName, int flags, unsigned debugFl
 
 void* operator new[](size_t size, size_t alignment, size_t alignmentOffset, const char* pName, int flags, unsigned debugFlags, const char* file, int line)
 {
-    assertf(
+    SPM_ASSERT(
         alignmentOffset % alignment == 0, "EASTL tried to use unsupported alignment offset (0x%x 0x%x 0x%x %s 0x%x 0x%x %s %d)",
         size, alignment, alignmentOffset, pName, flags, debugFlags, file, line
     );

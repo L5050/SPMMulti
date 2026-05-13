@@ -108,18 +108,3 @@ namespace eastl
 	} // namespace Internal
 
 } // namespace eastl
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

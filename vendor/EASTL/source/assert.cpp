@@ -33,7 +33,7 @@ namespace eastl
 
 	/// gpAssertionFailureFunction
 	/// 
-	/// Global assertion failure function pointer. Set by SetAssertionFailureFunction.
+	/// Global SPM_ASSERTion failure function pointer. Set by SetAssertionFailureFunction.
 	/// 
 	EASTL_API EASTL_AssertionFailureFunction gpAssertionFailureFunction        = AssertionFailureFunctionDefault;
 	EASTL_API void*                          gpAssertionFailureFunctionContext = NULL;
@@ -42,7 +42,7 @@ namespace eastl
 
 	/// SetAssertionFailureFunction
 	///
-	/// Sets the function called when an assertion fails. If this function is not called
+	/// Sets the function called when an SPM_ASSERTion fails. If this function is not called
 	/// by the user, a default function will be used. The user may supply a context parameter
 	/// which will be passed back to the user in the function call. This is typically used
 	/// to store a C++ 'this' pointer, though other things are possible.
@@ -95,18 +95,3 @@ namespace eastl
 
 
 } // namespace eastl
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -63,7 +63,7 @@ namespace eastl
 
 	namespace Internal
 	{
-		// utility to switch between exceptions and asserts
+		// utility to switch between exceptions and SPM_ASSERTs
 		inline void DoBadAnyCast()
 		{
 			#if EASTL_EXCEPTIONS_ENABLED

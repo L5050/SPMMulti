@@ -678,7 +678,7 @@ namespace eastl
 			EA_DISABLE_VC_WARNING(4716); // 'function' must return a value
 			// We cannot assume that R is default constructible.
 			// This function is called only when the function object CANNOT be called because it is empty,
-			// it will always throw or assert so we never use the return value anyways and neither should the caller.
+			// it will always throw or SPM_ASSERT so we never use the return value anyways and neither should the caller.
 			static R DefaultInvoker(Args... /*args*/, const FunctorStorageType& /*functor*/)
 			{
 				#if EASTL_EXCEPTIONS_ENABLED

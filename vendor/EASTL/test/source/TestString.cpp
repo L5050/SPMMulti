@@ -138,5 +138,3 @@ int TestString()
 
 	return nErrorCount;
 }
-
-

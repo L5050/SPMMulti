@@ -278,7 +278,7 @@
 // 6.
 //   Description: All memory orders are distinct types instead of enum values
 //   Reasoning  : This will not affect how the API is used in user code.
-//                It allows us to statically assert on invalid memory orders since they are compile-time types
+//                It allows us to statically SPM_ASSERT on invalid memory orders since they are compile-time types
 //                instead of potentially runtime enum values.
 //                Allows for more efficient code gen without the use of switch statements or if-else conditionals
 //                on the memory order enum values on compilers that do not provide intrinsics that take in a

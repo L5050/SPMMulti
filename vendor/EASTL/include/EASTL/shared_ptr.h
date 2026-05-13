@@ -779,7 +779,7 @@ namespace eastl
 		///    ptr->DoSomething();
 		element_type* operator->() const EA_NOEXCEPT
 		{
-			// assert(mpValue);
+			// SPM_ASSERT(mpValue);
 			return mpValue;
 		}
 
@@ -972,7 +972,7 @@ namespace eastl
 	template <typename T, typename U> 
 	inline bool operator==(const shared_ptr<T>& a, const shared_ptr<U>& b) EA_NOEXCEPT
 	{
-		// assert((a.get() != b.get()) || (a.use_count() == b.use_count()));
+		// SPM_ASSERT((a.get() != b.get()) || (a.use_count() == b.use_count()));
 		return (a.get() == b.get());
 	}
 
@@ -986,7 +986,7 @@ namespace eastl
 	template <typename T, typename U> 
 	inline bool operator!=(const shared_ptr<T>& a, const shared_ptr<U>& b) EA_NOEXCEPT
 	{
-		// assert((a.get() != b.get()) || (a.use_count() == b.use_count()));
+		// SPM_ASSERT((a.get() != b.get()) || (a.use_count() == b.use_count()));
 		return (a.get() != b.get());
 	}
 

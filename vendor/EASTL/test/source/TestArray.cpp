@@ -435,12 +435,3 @@ int TestArray()
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-

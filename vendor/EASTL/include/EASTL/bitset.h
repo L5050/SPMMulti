@@ -693,7 +693,7 @@ namespace eastl
 	inline BitsetBase<NW, WordType>::BitsetBase(uint32_t value)
 	{
 		// This implementation assumes that sizeof(value) <= sizeof(word_type).
-		//EASTL_CT_ASSERT(sizeof(value) <= sizeof(word_type)); Disabled because we now have support for uint8_t and uint16_t word types. It would be nice to have a runtime assert that tested this.
+		//EASTL_CT_ASSERT(sizeof(value) <= sizeof(word_type)); Disabled because we now have support for uint8_t and uint16_t word types. It would be nice to have a runtime SPM_ASSERT that tested this.
 
 		reset();
 		mWord[0] = static_cast<word_type>(value);
@@ -1107,7 +1107,7 @@ EA_RESTORE_GCC_WARNING()
 	inline BitsetBase<1, WordType>::BitsetBase(uint32_t value)
 	{
 		// This implementation assumes that sizeof(value) <= sizeof(word_type).
-		//EASTL_CT_ASSERT(sizeof(value) <= sizeof(word_type)); Disabled because we now have support for uint8_t and uint16_t word types. It would be nice to have a runtime assert that tested this.
+		//EASTL_CT_ASSERT(sizeof(value) <= sizeof(word_type)); Disabled because we now have support for uint8_t and uint16_t word types. It would be nice to have a runtime SPM_ASSERT that tested this.
 
 		mWord[0] = static_cast<word_type>(value);
 	}
@@ -1370,7 +1370,7 @@ EA_RESTORE_GCC_WARNING()
 	inline BitsetBase<2, WordType>::BitsetBase(uint32_t value)
 	{
 		// This implementation assumes that sizeof(value) <= sizeof(word_type).
-		//EASTL_CT_ASSERT(sizeof(value) <= sizeof(word_type)); Disabled because we now have support for uint8_t and uint16_t word types. It would be nice to have a runtime assert that tested this.
+		//EASTL_CT_ASSERT(sizeof(value) <= sizeof(word_type)); Disabled because we now have support for uint8_t and uint16_t word types. It would be nice to have a runtime SPM_ASSERT that tested this.
 
 		mWord[0] = static_cast<word_type>(value);
 		mWord[1] = 0;

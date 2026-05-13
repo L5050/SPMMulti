@@ -88,7 +88,7 @@ EVT_DEFINE_USER_FUNC(evt_post_msgbox) {
 
 EVT_DEFINE_USER_FUNC(evt_deref) {
     s32 addr = spm::evtmgr_cmd::evtGetValue(evt, evt->pCurData[0]);
-    assert(isWithinMem1Range(addr), "evt_deref error");
+    SPM_ASSERT(isWithinMem1Range(addr), "evt_deref error");
     s32* ptr = reinterpret_cast<s32*>(addr);
     spm::evtmgr_cmd::evtSetValue(evt, evt->pCurData[1], *ptr);
     return EVT_RET_CONTINUE;

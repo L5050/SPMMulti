@@ -177,15 +177,3 @@ int TestVectorSet()
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-
-
-
-

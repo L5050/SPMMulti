@@ -2221,10 +2221,3 @@ int TestSmartPtr()
 }
 
 EA_RESTORE_VC_WARNING()  // 4702
-
-
-
-
-
-
-

@@ -96,12 +96,3 @@ int TestRatio()
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-

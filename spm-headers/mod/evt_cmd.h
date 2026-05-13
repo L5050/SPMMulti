@@ -300,7 +300,7 @@
 
 // User function calls with validated parameter counts
 template<bool expression>
-class expression_assert
+class expression_SPM_ASSERT
 {
     static_assert(expression);
 };
@@ -309,7 +309,7 @@ using evt_helper_int_array = s32[];
     (sizeof(evt_helper_int_array{ __VA_ARGS__ }) / sizeof(s32))
 #define USER_FUNC(function, ...) \
     ( \
-        expression_assert< \
+        expression_SPM_ASSERT< \
             function##_parameter_count == -1 \
             || function##_parameter_count == EVT_HELPER_NUM_ARGS(__VA_ARGS__) \
         >(), \

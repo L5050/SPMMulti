@@ -760,4 +760,3 @@ int TestOptional()
     #endif // EASTL_OPTIONAL_ENABLED
 	return nErrorCount;
 }
-

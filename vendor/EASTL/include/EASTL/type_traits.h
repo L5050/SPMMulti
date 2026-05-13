@@ -26,14 +26,14 @@
 // There are three primary uses of type traits:
 //     * Allowing for optimized operations on some data types.
 //     * Allowing for different logic pathways based on data types.
-//     * Allowing for compile-type assertions about data type expectations.
+//     * Allowing for compile-type SPM_ASSERTions about data type expectations.
 //
 // Here is an example of using type traits to tell if a value is a floating point
 // value or not:
 //
 //    template <typename T>
 //    DoSomething(T t) {
-//        assert(is_floating_point<T>::value);
+//        SPM_ASSERT(is_floating_point<T>::value);
 //    }
 //
 // In this example, if Widget is trivally copyable.

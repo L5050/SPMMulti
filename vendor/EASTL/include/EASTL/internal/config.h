@@ -190,7 +190,7 @@ namespace eastl
 	#endif
 #endif
 
-// Developer debug. Helps EASTL developers assert EASTL is coded correctly.
+// Developer debug. Helps EASTL developers SPM_ASSERT EASTL is coded correctly.
 // Normally disabled for users since it validates internal things and not user things.
 #ifndef EASTL_DEV_DEBUG
 	#define EASTL_DEV_DEBUG 0
@@ -410,8 +410,8 @@ namespace eastl
 // EASTL_ASSERT_ENABLED
 //
 // Defined as 0 or non-zero. Default is same as EASTL_DEBUG.
-// If EASTL_ASSERT_ENABLED is non-zero, then asserts will be executed via
-// the assertion mechanism.
+// If EASTL_ASSERT_ENABLED is non-zero, then SPM_ASSERTs will be executed via
+// the SPM_ASSERTion mechanism.
 //
 // Example usage:
 //     #if EASTL_ASSERT_ENABLED
@@ -424,7 +424,7 @@ namespace eastl
 	#define EASTL_ASSERT_ENABLED EASTL_DEBUG
 #endif
 
-// Developer assert. Helps EASTL developers assert EASTL is coded correctly.
+// Developer SPM_ASSERT. Helps EASTL developers SPM_ASSERT EASTL is coded correctly.
 // Normally disabled for users since it validates internal things and not user things.
 #ifndef EASTL_DEV_ASSERT_ENABLED
 	#define EASTL_DEV_ASSERT_ENABLED EASTL_DEV_DEBUG
@@ -467,7 +467,7 @@ namespace eastl
 ///////////////////////////////////////////////////////////////////////////////
 // SetAssertionFailureFunction
 //
-// Allows the user to set a custom assertion failure mechanism.
+// Allows the user to set a custom SPM_ASSERTion failure mechanism.
 //
 // Example usage:
 //     void Assert(const char* pExpression, void* pContext);
@@ -483,7 +483,7 @@ namespace eastl
 		typedef void (*EASTL_AssertionFailureFunction)(const char* pExpression, void* pContext);
 		EASTL_API void SetAssertionFailureFunction(EASTL_AssertionFailureFunction pFunction, void* pContext);
 
-		// These are the internal default functions that implement asserts.
+		// These are the internal default functions that implement SPM_ASSERTs.
 		EASTL_API void AssertionFailure(const char* pExpression);
 		EASTL_API void AssertionFailureFunctionDefault(const char* pExpression, void* pContext);
 	}
@@ -515,7 +515,7 @@ namespace eastl
 	#endif
 #endif
 
-// Developer assert. Helps EASTL developers assert EASTL is coded correctly.
+// Developer SPM_ASSERT. Helps EASTL developers SPM_ASSERT EASTL is coded correctly.
 // Normally disabled for users since it validates internal things and not user things.
 #ifndef EASTL_DEV_ASSERT
 	#if EASTL_DEV_ASSERT_ENABLED
@@ -579,7 +579,7 @@ namespace eastl
 ///////////////////////////////////////////////////////////////////////////////
 // EASTL_CT_ASSERT / EASTL_CT_ASSERT_NAMED
 //
-// EASTL_CT_ASSERT is a macro for compile time assertion checks, useful for
+// EASTL_CT_ASSERT is a macro for compile time SPM_ASSERTion checks, useful for
 // validating *constant* expressions. The advantage over using EASTL_ASSERT
 // is that errors are caught at compile time instead of runtime.
 //
@@ -595,7 +595,7 @@ namespace eastl
 ///////////////////////////////////////////////////////////////////////////////
 // EASTL_CT_ASSERT_MSG
 //
-// EASTL_CT_ASSERT_MSG is a macro for compile time assertion checks, useful for
+// EASTL_CT_ASSERT_MSG is a macro for compile time SPM_ASSERTion checks, useful for
 // validating *constant* expressions. The advantage over using EASTL_ASSERT
 // is that errors are caught at compile time instead of runtime.
 // The message must be a string literal.
@@ -1082,10 +1082,10 @@ namespace eastl
 //
 // Defined as an integer >= 0. Default is to be equal to EASTL_DEBUG.
 // If nonzero, then a certain amount of automatic runtime validation is done.
-// Runtime validation is not considered the same thing as asserting that user
+// Runtime validation is not considered the same thing as SPM_ASSERTing that user
 // input values are valid. Validation refers to internal consistency checking
 // of the validity of containers and their iterators. Validation checking is
-// something that often involves significantly more than basic assertion
+// something that often involves significantly more than basic SPM_ASSERTion
 // checking, and it may sometimes be desirable to disable it.
 // This macro would generally be used internally by EASTL.
 //

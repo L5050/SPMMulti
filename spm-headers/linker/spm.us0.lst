@@ -87,7 +87,7 @@
 80184824:pausewinUnpauseGame
 80195168:charPixlItemWinIsClosed
 8019C3D0:irand
-8019B6C8:__assert2
+8019B6C8:__SPM_ASSERT2
 8019F22C:fontmgrInit
 8019F2E4:FontDrawStart
 8019F3C4:FontDrawStart_alpha

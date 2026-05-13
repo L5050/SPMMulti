@@ -69,7 +69,7 @@ namespace eastl
 		template <typename U, typename D>
 		void link(const linked_ptr<U, D>& linkedPtr)
 		{   // This code can only be called when we are in a reset state.
-			// assert(!mpValue && (mpNext == mpPrev));
+			// SPM_ASSERT(!mpValue && (mpNext == mpPrev));
 			mpNext           = linkedPtr.mpNext;
 			mpNext->mpPrev   = this;
 			mpPrev           = const_cast<linked_ptr<U, D>*>(&linkedPtr);
@@ -404,23 +404,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

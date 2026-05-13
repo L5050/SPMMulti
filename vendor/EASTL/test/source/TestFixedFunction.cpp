@@ -3,7 +3,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 #include <EABase/eabase.h>
-#include <EAAssert/eaassert.h>
+#include <EAAssert/eaSPM_ASSERT.h>
 
 // Included prior to EASTLTest.h to guard against the following bug resurfacing:
 // https://github.com/electronicarts/EASTL/issues/275

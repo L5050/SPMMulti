@@ -145,18 +145,3 @@ namespace eastl
 } // namespace eastl
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

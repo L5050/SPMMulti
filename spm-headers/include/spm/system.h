@@ -37,22 +37,22 @@ typedef f32 (IntplUserFunc)(s32, s32, f32, f32);
 #define SPM_ASSERT_NM(line, condition) \
     do \
     { \
-        if ((condition) == false) __assert(__FILE__, line, #condition); \
+        if ((condition) == false) __SPM_ASSERT(__FILE__, line, #condition); \
     } while (0)
 
 #define SPM_ASSERT(line, condition, ...) \
     do \
     { \
-        if ((condition) == false) __assert2(__FILE__, line, #condition, __VA_ARGS__); \
+        if ((condition) == false) __SPM_ASSERT2(__FILE__, line, #condition, __VA_ARGS__); \
     } while (0)
 
 #else
 
 #define SPM_ASSERT_NM(condition) \
-    if (!(condition)) spm::system::__assert(__FILE__, __LINE__, #condition)
+    if (!(condition)) spm::system::__SPM_ASSERT(__FILE__, __LINE__, #condition)
 
 #define SPM_ASSERT(condition, ...) \
-    if (!(condition)) spm::system::__assert2(__FILE__, __LINE__, #condition, __VA_ARGS__)
+    if (!(condition)) spm::system::__SPM_ASSERT2(__FILE__, __LINE__, #condition, __VA_ARGS__)
 
 #endif
 
@@ -77,9 +77,9 @@ const char * getMapdataDvdRoot();
 /*
     Assertion failure handlers
 */
-s32 NORETURN __assert(const char * filename, s32 line, const char * assertion);
-s32 NORETURN ATTRIBUTE_FORMAT(printf, 4, 5) __assert2(
-    const char * filename, s32 line, const char * assertion, const char * message, ...);
+s32 NORETURN __SPM_ASSERT(const char * filename, s32 line, const char * SPM_ASSERTion);
+s32 NORETURN ATTRIBUTE_FORMAT(printf, 4, 5) __SPM_ASSERT2(
+    const char * filename, s32 line, const char * SPM_ASSERTion, const char * message, ...);
 
 /*
     Rounds a float to an int

@@ -359,7 +359,7 @@ namespace eastl
 		if (alignment <= EASTL_ALLOCATOR_MIN_ALIGNMENT)
 		{
 			result = EASTLAlloc(a, n);
-			// Ensure the result is correctly aligned.  An assertion likely indicates a mismatch between EASTL_ALLOCATOR_MIN_ALIGNMENT and the minimum alignment
+			// Ensure the result is correctly aligned.  An SPM_ASSERTion likely indicates a mismatch between EASTL_ALLOCATOR_MIN_ALIGNMENT and the minimum alignment
 			// of EASTLAlloc.  If there is a mismatch it may be necessary to define EASTL_ALLOCATOR_MIN_ALIGNMENT to be the minimum alignment of EASTLAlloc, or
 			// to increase the alignment of EASTLAlloc to match EASTL_ALLOCATOR_MIN_ALIGNMENT.
 			EASTL_ASSERT((reinterpret_cast<size_t>(result)& ~(alignment - 1)) == reinterpret_cast<size_t>(result));
@@ -367,7 +367,7 @@ namespace eastl
 		else
 		{
 			result = EASTLAllocAligned(a, n, alignment, alignmentOffset);
-			// Ensure the result is correctly aligned.  An assertion here may indicate a bug in the allocator.
+			// Ensure the result is correctly aligned.  An SPM_ASSERTion here may indicate a bug in the allocator.
 			auto resultMinusOffset = (char*)result - alignmentOffset;
 			EA_UNUSED(resultMinusOffset);
 			EASTL_ASSERT((reinterpret_cast<size_t>(resultMinusOffset)& ~(alignment - 1)) == reinterpret_cast<size_t>(resultMinusOffset));
@@ -379,19 +379,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

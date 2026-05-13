@@ -1590,5 +1590,3 @@ int TestFixedTupleVector()
 
 	return nErrorCount;
 }
-
-

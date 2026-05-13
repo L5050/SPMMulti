@@ -465,7 +465,7 @@ namespace eastl
 		///    int x = ptr[2];
 		typename add_lvalue_reference<T>::type operator[](ptrdiff_t i) const
 		{
-			// assert(mpArray && (i >= 0));
+			// SPM_ASSERT(mpArray && (i >= 0));
 			return mPair.first()[i];
 		}
 
@@ -722,14 +722,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-
-

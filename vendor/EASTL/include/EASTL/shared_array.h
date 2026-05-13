@@ -164,7 +164,7 @@ namespace eastl
 		~shared_array()
 		{
 			const ref_count newRefCount(--*mpRefCount); 
-			// assert(newRefCount >= 0);
+			// SPM_ASSERT(newRefCount >= 0);
 			if(newRefCount == 0)
 			{
 				EASTLFree(mAllocator, mpRefCount, sizeof(ref_count));
@@ -252,7 +252,7 @@ namespace eastl
 		///    int x = ptr[2];
 		T& operator[](ptrdiff_t i) const
 		{
-			// assert(mpArray && (i >= 0));
+			// SPM_ASSERT(mpArray && (i >= 0));
 			return mpArray[i];
 		}
 
@@ -263,7 +263,7 @@ namespace eastl
 		///    int x = *ptr;
 		T& operator*() const
 		{
-			// assert(mpArray);
+			// SPM_ASSERT(mpArray);
 			return *mpArray;
 		}
 
@@ -275,7 +275,7 @@ namespace eastl
 		///    ptr->DoSomething();
 		T* operator->() const EA_NOEXCEPT
 		{
-			// assert(mpArray);
+			// SPM_ASSERT(mpArray);
 			return mpArray;
 		}
 
@@ -298,7 +298,7 @@ namespace eastl
 		/// The return value is one if the owned pointer is null.
 		int use_count() const
 		{
-			// assert(mpRefCount);
+			// SPM_ASSERT(mpRefCount);
 			return (int)*mpRefCount;
 		}
 
@@ -307,7 +307,7 @@ namespace eastl
 		/// The return value is true if the owned pointer is null.
 		bool unique() const
 		{
-			// assert(mpRefCount);
+			// SPM_ASSERT(mpRefCount);
 			return (*mpRefCount == 1);
 		}
 
@@ -334,7 +334,7 @@ namespace eastl
 		/// the owned pointer is null. Some compilers require this and some don't.
 		///    shared_array<int> ptr = new int(3);
 		///    if(!ptr)
-		///        assert(false);
+		///        SPM_ASSERT(false);
 		bool operator!() const EA_NOEXCEPT
 		{
 			return (mpArray == NULL);
@@ -389,7 +389,7 @@ namespace eastl
 	template <typename T, typename TA, typename TD, typename U, typename UA, typename UD>
 	inline bool operator==(const shared_array<T, TA, TD>& sharedArray1, const shared_array<U, UA, UD>& sharedArray2)
 	{
-		// assert((sharedArray1.get() != sharedArray2.get()) || (sharedArray1.use_count() == sharedArray2.use_count()));
+		// SPM_ASSERT((sharedArray1.get() != sharedArray2.get()) || (sharedArray1.use_count() == sharedArray2.use_count()));
 		return (sharedArray1.get() == sharedArray2.get());
 	}
 
@@ -402,7 +402,7 @@ namespace eastl
 	template <typename T, typename TA, typename TD, typename U, typename UA, typename UD>
 	inline bool operator!=(const shared_array<T, TA, TD>& sharedArray1, const shared_array<U, UA, UD>& sharedArray2)
 	{
-		// assert((sharedArray1.get() != sharedArray2.get()) || (sharedArray1.use_count() == sharedArray2.use_count()));
+		// SPM_ASSERT((sharedArray1.get() != sharedArray2.get()) || (sharedArray1.use_count() == sharedArray2.use_count()));
 		return (sharedArray1.get() != sharedArray2.get());
 	}
 
@@ -421,14 +421,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-
-

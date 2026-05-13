@@ -24,10 +24,10 @@
 #ifdef __MWERKS__
     #define static_assert __static_assert 
 #elif !(defined __cplusplus) || (defined __CLANGD__)
-    #define static_assert _Static_assert
+    #define static_assert _Static_SPM_ASSERT
 #endif
 
-// Macro for quick size static assert
+// Macro for quick size static SPM_ASSERT
 #ifndef M2C
     #define SIZE_ASSERT(type, size) static_assert(sizeof(type) == size, "Size wrong for "#type);
     #define OFFSET_ASSERT(type, member, offset) \

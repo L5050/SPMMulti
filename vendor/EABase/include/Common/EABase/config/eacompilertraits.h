@@ -2221,7 +2221,7 @@
 	// Example usage:
 	//    void foo(EA_MAYBE_UNUSED int i)
 	//    {
-	//        assert(i == 42);  // warning suppressed when asserts disabled.
+	//        SPM_ASSERT(i == 42);  // warning suppressed when SPM_ASSERTs disabled.
 	//    }
 	//
 	#if !defined(EA_MAYBE_UNUSED)
@@ -2549,13 +2549,3 @@
 	// <No current platform fails to propogate sign bits on right signed shifts>
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-

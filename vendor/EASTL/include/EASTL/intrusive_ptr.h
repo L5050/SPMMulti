@@ -302,7 +302,7 @@ namespace eastl
 		/// the owned pointer is null. Some compilers require this and some don't.
 		///    intrusive_ptr<Widget> ptr = new Widget;
 		///    if(!ptr)
-		///        assert(false);
+		///        SPM_ASSERT(false);
 		bool operator!() const
 		{
 			return (mpObject == NULL);
@@ -399,28 +399,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

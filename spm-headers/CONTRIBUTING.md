@@ -11,7 +11,7 @@ be inserted when compiling in C++
 
 ## Naming
 
-- Use official names when possible (from TTYD symbol map, asserts, etc.), and try to follow the style otherwise
+- Use official names when possible (from TTYD symbol map, SPM_ASSERTs, etc.), and try to follow the style otherwise
     - Use prefixes based on the area of code (ex. `marioMain`, `evtRestart`)
     - Follow patterns like `work`, `wp`, `entry`, `onoff`
 - Name types in PascalCase (for example, `EvtWork`)

@@ -141,7 +141,7 @@ Take a look at the cases in EASTL where try/catch is used and see what it is doi
 
 ## Type Traits
 
-EASTL provides a facility called type_traits which is very similar to the type_traits being proposed by the C++ TR1 (see above). type_traits are useful because they tell you about properties of types at compile time. This allows you to do things such as assert that a data type is scalar or that a data type is const. The way we put them to use in EASTL is to take advantage of them to implement different pathways for functions based on types. For example, we can copy a contiguous array of scalars much faster via memcpy than we can via a for loop, though we could not safely employ the for loop for a non-trivial C++ class.
+EASTL provides a facility called type_traits which is very similar to the type_traits being proposed by the C++ TR1 (see above). type_traits are useful because they tell you about properties of types at compile time. This allows you to do things such as SPM_ASSERT that a data type is scalar or that a data type is const. The way we put them to use in EASTL is to take advantage of them to implement different pathways for functions based on types. For example, we can copy a contiguous array of scalars much faster via memcpy than we can via a for loop, though we could not safely employ the for loop for a non-trivial C++ class.
 
 As mentioned in the GeneralOptimizations section below, EASTL should take advantage of type_traits information to the extent possible to achive maximum effiiciency.
 

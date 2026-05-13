@@ -53,12 +53,12 @@
 #endif
 
 // ------------------------------------------------------------------------
-// Include assert.h on C11 supported compilers so we may allow static_assert usage
+// Include SPM_ASSERT.h on C11 supported compilers so we may allow static_assert usage
 // http://en.cppreference.com/w/c/error/static_assert
 // C11 standard(ISO / IEC 9899:2011) :
-// 7.2/3 Diagnostics <assert.h>(p : 186)
+// 7.2/3 Diagnostics <SPM_ASSERT.h>(p : 186)
 #if !defined(__cplusplus) && defined(__STDC_VERSION__)  && __STDC_VERSION__ >= 201100L
-	#include <assert.h>
+	#include <SPM_ASSERT.h>
 #endif
 
 
@@ -911,7 +911,7 @@
 // ------------------------------------------------------------------------
 // static_assert
 //
-// C++11 static_assert (a.k.a. compile-time assert).
+// C++11 static_assert (a.k.a. compile-time SPM_ASSERT).
 //
 // Specification:
 //     void static_assert(bool const_expression, const char* description);
@@ -1005,7 +1005,3 @@
 #endif
 
 #endif // Header include guard
-
-
-
-

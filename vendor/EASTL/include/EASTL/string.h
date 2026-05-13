@@ -1198,7 +1198,7 @@ namespace eastl
 	inline typename basic_string<T, Allocator>::const_reference
 	basic_string<T, Allocator>::operator[](size_type n) const
 	{
-		#if EASTL_ASSERT_ENABLED // We allow the user to reference the trailing 0 char without asserting. Perhaps we shouldn't.
+		#if EASTL_ASSERT_ENABLED // We allow the user to reference the trailing 0 char without SPM_ASSERTing. Perhaps we shouldn't.
 			if(EASTL_UNLIKELY(n > internalLayout().GetSize()))
 				EASTL_FAIL_MSG("basic_string::operator[] -- out of range");
 		#endif
@@ -1211,7 +1211,7 @@ namespace eastl
 	inline typename basic_string<T, Allocator>::reference
 	basic_string<T, Allocator>::operator[](size_type n)
 	{
-		#if EASTL_ASSERT_ENABLED // We allow the user to reference the trailing 0 char without asserting. Perhaps we shouldn't.
+		#if EASTL_ASSERT_ENABLED // We allow the user to reference the trailing 0 char without SPM_ASSERTing. Perhaps we shouldn't.
 			if(EASTL_UNLIKELY(n > internalLayout().GetSize()))
 				EASTL_FAIL_MSG("basic_string::operator[] -- out of range");
 		#endif
@@ -1505,7 +1505,7 @@ namespace eastl
 		#if EASTL_STRING_OPT_RANGE_ERRORS
 			if(EASTL_UNLIKELY(n >= internalLayout().GetSize()))
 				ThrowRangeException();
-		#elif EASTL_ASSERT_ENABLED                  // We assert if the user references the trailing 0 char.
+		#elif EASTL_ASSERT_ENABLED                  // We SPM_ASSERT if the user references the trailing 0 char.
 			if(EASTL_UNLIKELY(n >= internalLayout().GetSize()))
 				EASTL_FAIL_MSG("basic_string::at -- out of range");
 		#endif
@@ -1521,7 +1521,7 @@ namespace eastl
 		#if EASTL_STRING_OPT_RANGE_ERRORS
 			if(EASTL_UNLIKELY(n >= internalLayout().GetSize()))
 				ThrowRangeException();
-		#elif EASTL_ASSERT_ENABLED                  // We assert if the user references the trailing 0 char.
+		#elif EASTL_ASSERT_ENABLED                  // We SPM_ASSERT if the user references the trailing 0 char.
 			if(EASTL_UNLIKELY(n >= internalLayout().GetSize()))
 				EASTL_FAIL_MSG("basic_string::at -- out of range");
 		#endif
@@ -1535,10 +1535,10 @@ namespace eastl
 	basic_string<T, Allocator>::front()
 	{
 		#if EASTL_ASSERT_ENABLED && EASTL_EMPTY_REFERENCE_ASSERT_ENABLED
-			if (EASTL_UNLIKELY(internalLayout().GetSize() <= 0)) // We assert if the user references the trailing 0 char.
+			if (EASTL_UNLIKELY(internalLayout().GetSize() <= 0)) // We SPM_ASSERT if the user references the trailing 0 char.
 				EASTL_FAIL_MSG("basic_string::front -- empty string");
 		#else
-			// We allow the user to reference the trailing 0 char without asserting.
+			// We allow the user to reference the trailing 0 char without SPM_ASSERTing.
 		#endif
 
 		return *internalLayout().BeginPtr();
@@ -1550,10 +1550,10 @@ namespace eastl
 	basic_string<T, Allocator>::front() const
 	{
 		#if EASTL_ASSERT_ENABLED && EASTL_EMPTY_REFERENCE_ASSERT_ENABLED
-			if (EASTL_UNLIKELY(internalLayout().GetSize() <= 0)) // We assert if the user references the trailing 0 char.
+			if (EASTL_UNLIKELY(internalLayout().GetSize() <= 0)) // We SPM_ASSERT if the user references the trailing 0 char.
 				EASTL_FAIL_MSG("basic_string::front -- empty string");
 		#else
-			// We allow the user to reference the trailing 0 char without asserting.
+			// We allow the user to reference the trailing 0 char without SPM_ASSERTing.
 		#endif
 
 		return *internalLayout().BeginPtr();
@@ -1565,10 +1565,10 @@ namespace eastl
 	basic_string<T, Allocator>::back()
 	{
 		#if EASTL_ASSERT_ENABLED && EASTL_EMPTY_REFERENCE_ASSERT_ENABLED
-			if (EASTL_UNLIKELY(internalLayout().GetSize() <= 0)) // We assert if the user references the trailing 0 char.
+			if (EASTL_UNLIKELY(internalLayout().GetSize() <= 0)) // We SPM_ASSERT if the user references the trailing 0 char.
 				EASTL_FAIL_MSG("basic_string::back -- empty string");
 		#else
-			// We allow the user to reference the trailing 0 char without asserting.
+			// We allow the user to reference the trailing 0 char without SPM_ASSERTing.
 		#endif
 
 		return *(internalLayout().EndPtr() - 1);
@@ -1580,10 +1580,10 @@ namespace eastl
 	basic_string<T, Allocator>::back() const
 	{
 		#if EASTL_ASSERT_ENABLED && EASTL_EMPTY_REFERENCE_ASSERT_ENABLED
-			if (EASTL_UNLIKELY(internalLayout().GetSize() <= 0)) // We assert if the user references the trailing 0 char.
+			if (EASTL_UNLIKELY(internalLayout().GetSize() <= 0)) // We SPM_ASSERT if the user references the trailing 0 char.
 				EASTL_FAIL_MSG("basic_string::back -- empty string");
 		#else
-			// We allow the user to reference the trailing 0 char without asserting.
+			// We allow the user to reference the trailing 0 char without SPM_ASSERTing.
 		#endif
 
 		return *(internalLayout().EndPtr() - 1);

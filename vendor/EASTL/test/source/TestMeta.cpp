@@ -109,12 +109,3 @@ int TestMeta()
 }
 
 #endif // EA_COMPILER_CPP14_ENABLED
-
-
-
-
-
-
-
-
-

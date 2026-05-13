@@ -468,5 +468,3 @@ int TestAny()
 
 	return nErrorCount;
 }
-
-

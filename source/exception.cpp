@@ -146,7 +146,7 @@ extern "C" void exceptionMessageHandler(char * msg)
         wii::mtx::Mtx44 mtx;
         wii::DEMOInit::DEMOBeforeRender();
         wii::mtx::C_MTXOrtho(&mtx, SCREEN_TOP, SCREEN_BOTTOM, -304.0f, 304.0f, 1.0f, 1000.0f);
-        wii::gx::GXSetProjection(&mtx, 1);
+        wii::gx::GXSetProjection(mtx, 1);
 
         // Draw game & mod version header
         drawTitle(scale);

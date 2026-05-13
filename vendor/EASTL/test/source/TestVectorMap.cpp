@@ -266,15 +266,3 @@ int TestVectorMap()
 
 	return nErrorCount;
 }
-
-
-
-
-
-
-
-
-
-
-
-

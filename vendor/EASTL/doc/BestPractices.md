@@ -472,7 +472,7 @@ There are three primary uses of type traits:
 
 * Allowing for optimized operations on some data types.
 * Allowing for different logic pathways based on data types.
-* Allowing for compile-type assertions about data type expectations.
+* Allowing for compile-type SPM_ASSERTions about data type expectations.
 
 Most of the type traits are automatically detected and implemented by the compiler. However, EASTL allows for the user to explicitly give the compiler hints about type traits that the compiler cannot know, via the EASTL_DECLARE declarations. If the user has a class that is relocatable (i.e. can safely use memcpy to copy values), the user can use the EASTL_DECLARE_TRIVIAL_RELOCATE declaration to tell the compiler that the class can be copied via memcpy. This will automatically significantly speed up some containers and algorithms that use that class.
 
@@ -483,7 +483,7 @@ template <typename T>
 
   DoSomething(T t) {
 
-    assert(is_floating_point<T>::value);
+    SPM_ASSERT(is_floating_point<T>::value);
 
   }
 ```

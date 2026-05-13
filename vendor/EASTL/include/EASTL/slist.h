@@ -1262,7 +1262,7 @@ namespace eastl
 		// One option is to throw an exception. Another option which probably captures the
 		// user intent most of the time is to copy the range from the source to the dest and 
 		// remove it from the source. Until then it's simply disallowed to splice with unequal allocators.
-		// EASTL_ASSERT(internalAllocator() == x.internalAllocator()); // Disabled because our member sort function uses splice but with allocators that may be unequal. There isn't a simple workaround aside from disabling this assert.
+		// EASTL_ASSERT(internalAllocator() == x.internalAllocator()); // Disabled because our member sort function uses splice but with allocators that may be unequal. There isn't a simple workaround aside from disabling this SPM_ASSERT.
 
 		if(x.internalNode().mpNext) // If there is anything to splice...
 		{

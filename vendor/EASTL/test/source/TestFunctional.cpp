@@ -4,7 +4,7 @@
 
 
 #include <EABase/eabase.h>
-#include <EAAssert/eaassert.h>
+#include <EAAssert/eaSPM_ASSERT.h>
 #include "EASTLTest.h"
 #include <EASTL/memory.h>
 #include <EASTL/functional.h>

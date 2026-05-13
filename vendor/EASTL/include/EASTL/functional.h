@@ -994,7 +994,7 @@ namespace eastl
 	/// Example usage:
 	///
 	///		auto nf = eastl::not_fn([]{ return false; });
-	///     assert(nf());  // return true
+	///     SPM_ASSERT(nf());  // return true
 	///
 	template <class F>
 	inline not_fn_ret<F> not_fn(F&& f)
@@ -1258,10 +1258,3 @@ namespace eastl
 #include <EASTL/internal/function.h>
 
 #endif // Header include guard
-
-
-
-
-
-
-

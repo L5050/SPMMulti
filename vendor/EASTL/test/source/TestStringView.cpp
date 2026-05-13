@@ -112,4 +112,3 @@ int TestStringView()
 
 	return nErrorCount;
 }
-

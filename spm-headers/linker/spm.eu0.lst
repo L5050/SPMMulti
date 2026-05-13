@@ -927,7 +927,7 @@
 // system.c
 8019d150:rand
 8019d254:irand
-8019c54c:__assert2
+8019c54c:__SPM_ASSERT2
 8019cf84:qqsort
 8019c688:distABf
 8019c508:getSpmarioDVDRoot

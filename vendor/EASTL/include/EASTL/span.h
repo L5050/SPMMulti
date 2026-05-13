@@ -164,7 +164,7 @@ namespace eastl
 		index_type mnSize = 0;
 
 	private:
-		EA_CONSTEXPR bool bounds_check(size_t) const;  // utility used in asserts
+		EA_CONSTEXPR bool bounds_check(size_t) const;  // utility used in SPM_ASSERTs
 	};
 
 

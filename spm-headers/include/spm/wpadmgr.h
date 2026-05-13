@@ -16,7 +16,7 @@ USING(wii::mtx::Vec2)
 USING(wii::kpad::KPADStatus)
 USING(wii::os::OSTime)
 
-// Controller stuff used to be in system.c in TTYD & no asserts in this code so name is unnoficial
+// Controller stuff used to be in system.c in TTYD & no SPM_ASSERTs in this code so name is unnoficial
 
 #define WPAD_FLAG_ENABLE_CURSOR 2
 

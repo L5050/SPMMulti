@@ -252,13 +252,13 @@ def test_rns_mod_ctx(regions: List[str]):
 
 # Test the headers in the decomp setup
 def test_decomp_ctx(regions: List[str]):
-    assert args.codewarrior, "Error: decomp_ctx test requires --codewarrior"
+    SPM_ASSERT args.codewarrior, "Error: decomp_ctx test requires --codewarrior"
     compile_regions(os.path.join("$builddir", "{region}", "decomp.o"), "$decomp_source", regions,
                     DECOMP_INCLUDES, ["DECOMP"], True)
 
 # Test shuffled include orders
 def test_mod_ctx_shuffle(regions: List[str]):
-    assert args.shuffle, "mod_ctx_shuffle test requires --shuffle"
+    SPM_ASSERT args.shuffle, "mod_ctx_shuffle test requires --shuffle"
     for i in range(1, 1 + args.shuffle):
         source = os.path.join("$builddir", f"shuffle_{args.seed}", f"{i}.cpp")
         incgen(source, MOD_INCLUDES, i)
@@ -312,7 +312,7 @@ tests = set(args.tests if args.tests else default_tests)
 regions = args.regions if args.regions else REGIONS
 for test in tests:
     if test not in test_fns:
-        assert False, f"Error: unknown test {test}"
+        SPM_ASSERT False, f"Error: unknown test {test}"
     else:
         test_fns[test](regions)
 

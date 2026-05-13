@@ -50,7 +50,7 @@ namespace eastl
 
 		void link(const linked_array& linkedArray)
 		{   // This code can only be called when we are in a reset state.
-			// assert(!mpArray && (mpNext == mpPrev));
+			// SPM_ASSERT(!mpArray && (mpNext == mpPrev));
 			mpNext             = linkedArray.mpNext;
 			mpNext->mpPrev     = this;
 			mpPrev             = &linkedArray;
@@ -175,7 +175,7 @@ namespace eastl
 		/// Returns a reference to the specified item in the owned pointer array. 
 		T& operator[](ptrdiff_t i) const
 		{
-			// assert(mpArray && (i >= 0));
+			// SPM_ASSERT(mpArray && (i >= 0));
 			return mpArray[i];
 		}
 
@@ -325,12 +325,3 @@ namespace eastl
 
 
 #endif // Header include guard
-
-
-
-
-
-
-
-
-

@@ -167,7 +167,7 @@ namespace eastl
 					return pLink;
 				}
 
-				// EASTL_ASSERT(false); To consider: enable this assert. However, we intentionally disable it because this isn't necessarily an assertable error.
+				// EASTL_ASSERT(false); To consider: enable this SPM_ASSERT. However, we intentionally disable it because this isn't necessarily an SPM_ASSERTable error.
 				return NULL;
 			}
 		}

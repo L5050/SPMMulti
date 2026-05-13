@@ -1389,7 +1389,7 @@ public:
 	{
 		uint8_t* p8 = static_cast<uint8_t*>(p) - (kMultiplier * (mInstanceId + 1));
 		EASTL_ASSERT(*p8 == mInstanceId); // mInstanceId must match the id used in allocate(), otherwise the behavior is
-		                                  // undefined (probably a heap assert).
+		                                  // undefined (probably a heap SPM_ASSERT).
 		if (*p8 == mInstanceId) // It's possible that *p8 coincidentally matches mInstanceId if p8 is offset into memory
 		                        // we don't control.
 			free(p8);
@@ -1746,10 +1746,3 @@ struct AutoDefaultAllocator
 
 
 #endif // Header include guard
-
-
-
-
-
-
-

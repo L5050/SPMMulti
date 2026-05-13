@@ -19,7 +19,7 @@
 #include <ctype.h>
 #include <cmath>
 #include <new>
-#include <assert.h>
+#include <SPM_ASSERT.h>
 #include <stdarg.h>
 #include <EAMain/EAEntryPointMain.inl>
 #include <EATest/EASTLVsnprintf.inl>
