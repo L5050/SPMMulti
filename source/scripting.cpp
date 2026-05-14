@@ -42,6 +42,7 @@ namespace mod {
 
   s32 startWebhook(spm::evtmgr::EvtEntry * evtEntry, bool firstRun) {
     registerPlayer();
+    connectToServer();
     return 2;
   }
 

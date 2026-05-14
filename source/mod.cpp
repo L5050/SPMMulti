@@ -48,6 +48,7 @@ namespace mod {
   bool shocked = false;
   spm::evtmgr::EvtScriptCode* thunderRageScript = spm::item_event_data::itemEventDataTable[2].useScript;
   u32 sockfd;
+  const char *serverIP = "192.168.0.182";
   void (*hudLoadStats)(void);
 
   struct Player {
@@ -398,7 +399,7 @@ namespace mod {
             motionId
         );
 
-        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP(serverIP, 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
@@ -423,7 +424,7 @@ namespace mod {
             spm::spmario::gp->mapName
         );
 
-        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP(serverIP, 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
@@ -490,7 +491,7 @@ namespace mod {
               spm::spmario::gp -> mapName,
               joiningClients[i] // Replace any instance of evtEntry -> lw[4] with i
             );
-            s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
+            s32 responseBytes = SendUDP(serverIP, 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
             // Ensure data was received
             if (responseBytes > 0) {
@@ -538,7 +539,7 @@ namespace mod {
               spm::spmario::gp -> mapName,
               joiningClients[i]
             );
-            responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer1, 1024);
+            responseBytes = SendUDP(serverIP, 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer1, 1024);
 
             // Ensure data was received
             if (responseBytes > 0) {
@@ -597,7 +598,7 @@ namespace mod {
             spm::spmario::gp -> mapName,
             clients[i].clientID
           );
-          s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
+          s32 responseBytes = SendUDP(serverIP, 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
           // Ensure data was received
           if (responseBytes > 0) {
@@ -683,7 +684,7 @@ namespace mod {
           spm::spmario::gp -> gsw0
         );
 
-        s32 responseBytes = SendUDP("192.168.0.113", 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
+        s32 responseBytes = SendUDP(serverIP, 4000, postBuffer, msl::string::strlen(postBuffer), responseBuffer, 1024);
 
         // Ensure data was received
         if (responseBytes > 0) {
@@ -783,7 +784,7 @@ namespace mod {
     );
     wii::os::OSReport("Level: %d\n", pouch_ptr -> level);
 
-    HTTPStatus_t mystatus = HTTPSendRequest("192.168.0.113", 3000, "/register", HTTP_METHOD_POST, postBuffer, msl::string::strlen(postBuffer), & response);
+    HTTPStatus_t mystatus = HTTPSendRequest(serverIP, 3000, "/register", HTTP_METHOD_POST, postBuffer, msl::string::strlen(postBuffer), & response);
     wii::os::OSReport("Status: %d\n", mystatus);
     //wii::os::OSReport("Status: %s\n", response.pBuffer);
     //get rid of the garbage data
@@ -834,7 +835,7 @@ namespace mod {
 
     wii::os::OSReport("Position: %f %f %f\n", pos.x, pos.y, pos.z);
 
-    HTTPStatus_t mystatus = HTTPSendRequest("192.168.0.113", 3000, "/connect", HTTP_METHOD_POST, postBuffer, msl::string::strlen(postBuffer), & response);
+    HTTPStatus_t mystatus = HTTPSendRequest(serverIP, 3000, "/connect", HTTP_METHOD_POST, postBuffer, msl::string::strlen(postBuffer), & response);
     wii::os::OSReport("Status: %d\n", mystatus);
     //wii::os::OSReport("Status: %s\n", response.pBuffer);
     //get rid of the garbage data
@@ -865,8 +866,8 @@ namespace mod {
 
 void new_hudLoadStats()
 {
-  registerPlayer();
-  wii::os::OSReport("SPM Door Rando has loaded %s\n", spm::spmario::gp->saveName);
+  connectToServer();
+  wii::os::OSReport("Save file name %s\n", spm::spmario::gp->saveName);
   return hudLoadStats();
 }
 
@@ -932,7 +933,7 @@ void patchScripts()
   spm::evtmgr::EvtScriptCode* transition_evt = getInstructionEvtArg(an1_01_md->initScript, 60, 0);
   evtpatch::hookEvt(transition_evt, 10, (spm::evtmgr::EvtScriptCode*)registerToServer);
   spm::map_data::MapData * he1_01_md = spm::map_data::mapDataPtr("he1_01");
-  evtpatch::hookEvt(he1_01_md->initScript, 75, (spm::evtmgr::EvtScriptCode*)evt_connectToServer);
+  //evtpatch::hookEvt(he1_01_md->initScript, 75, (spm::evtmgr::EvtScriptCode*)evt_connectToServer);
   evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].deathScript, 1, (spm::evtmgr::EvtScriptCode*)mariounk6);
   evtpatch::hookEvt(spm::npcdrv::npcEnemyTemplates[422].onHitScript, 71, (spm::evtmgr::EvtScriptCode*)mariounk3);
 }
