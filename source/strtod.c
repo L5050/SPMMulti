@@ -92,6 +92,31 @@ static int normailize96(uint32_t* pw2, uint32_t* pw1, uint32_t* pw0)
   return lz;
 }
 
+/*
+
+  Changed by Peeech / Hamptoast to resolve gcc compiler issues
+
+  original:
+    uint32_t rdVal0=0, rdVal1=0;
+    ptrdiff_t rdExp = 0, exp;
+    const uint32_t maxVal = ((UINT64_MAX-9)/10)>>32;
+    uint32_t mant0, mant1;
+    int lsbits = 0;
+    unsigned sticky;
+    int neg, nege;
+
+  ->
+
+    uint32_t rdVal0 = 0, rdVal1 = 0;
+    ptrdiff_t rdExp = 0, exp = 0;
+    const uint32_t maxVal = ((UINT64_MAX - 9) / 10) >> 32;
+    uint32_t mant0 = 0, mant1 = 0;
+    int lsbits = 0;
+    unsigned sticky = 0;
+    int neg = 0, nege = 0;
+
+*/
+
 double
 __attribute__ ((cold))
 strtod(const char* str, char** endptr)
@@ -99,13 +124,13 @@ strtod(const char* str, char** endptr)
   const uint8_t* p = (const uint8_t*)skipWhiteSpaces(str);
 
   const uint8_t* endptrval = 0;
-  uint32_t rdVal0=0, rdVal1=0;
-  ptrdiff_t rdExp = 0, exp;
-  const uint32_t maxVal = ((UINT64_MAX-9)/10)>>32;
-  uint32_t mant0, mant1;
+  uint32_t rdVal0 = 0, rdVal1 = 0;
+  ptrdiff_t rdExp = 0, exp = 0;
+  const uint32_t maxVal = ((UINT64_MAX - 9) / 10) >> 32;
+  uint32_t mant0 = 0, mant1 = 0;
   int lsbits = 0;
-  unsigned sticky;
-  int neg, nege;
+  unsigned sticky = 0;
+  int neg = 0, nege = 0;
   enum { PARSE_INT = 0, PARSE_FRACT = 1, PARSE_EXP };
   for (int parseState = PARSE_INT;;parseState = PARSE_EXP) {
     unsigned signC = p[0];
@@ -186,7 +211,7 @@ strtod(const char* str, char** endptr)
     unsigned mexp = MAX_EXP_MAGNITUDE;
     if (rdVal1 == 0) {
       if (sexp)
-        exp = -exp;
+      exp = -exp;
       int64_t exp64 = exp;
       exp64 += rdVal0;
       if (exp64 < 0) {
