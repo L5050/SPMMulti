@@ -17,7 +17,7 @@ s32 evt_get_cur_pixl(spm::evtmgr::EvtEntry * entry, bool firstRun)
     (void) firstRun;
     
     int pixl = spm::mario_pouch::pouchGetCurPixl();
-    spm::evtmgr_cmd::evtSetValue(entry, entry->pCurData[0], pixl);
+    spm::evtmgr_cmd::evtSetValue(entry, entry->pCurData[0], &pixl);
     return 2;
 }
 

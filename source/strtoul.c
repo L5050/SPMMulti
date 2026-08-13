@@ -57,9 +57,9 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#define isdigit(x) ((x) >= '0') && ((x) <= '9')
-#define isupper(x) ((x) >= 'A') && ((x) <= 'Z')
-#define islower(x) ((x) >= 'a') && ((x) <= 'z')
+#define isdigit(x) (((x) >= '0') && ((x) <= '9'))
+#define isupper(x) (((x) >= 'A') && ((x) <= 'Z'))
+#define islower(x) (((x) >= 'a') && ((x) <= 'z'))
 #define isalpha(x) (isupper(x) || islower(x))
 #define isspace(x) ((x) == ' ')
 
@@ -69,6 +69,31 @@
  * Ignores `locale' stuff.  Assumes that the upper and lower case
  * alphabets and digits are each contiguous.
  */
+
+/*
+
+	Changed by Peeech / Hamptoast to resolve gcc compiler issues
+
+	original:
+		#define isdigit(x) ((x) >= '0') && ((x) <= '9')
+		#define isupper(x) ((x) >= 'A') && ((x) <= 'Z')
+		#define islower(x) ((x) >= 'a') && ((x) <= 'z')
+
+		...
+
+		if (any < 0 || acc > cutoff || acc == cutoff && c > cutlim)
+
+	->
+		#define isdigit(x) (((x) >= '0') && ((x) <= '9'))
+		#define isupper(x) (((x) >= 'A') && ((x) <= 'Z'))
+		#define islower(x) (((x) >= 'a') && ((x) <= 'z'))
+
+		...
+
+		if (any < 0 || acc > cutoff || acc == (cutoff && c > cutlim))
+
+*/
+
 unsigned long strtoul(const char *nptr, char **endptr, int base)
 {
 	const char *s = nptr;
@@ -107,7 +132,7 @@ unsigned long strtoul(const char *nptr, char **endptr, int base)
 			break;
 		if (c >= base)
 			break;
-		if (any < 0 || acc > cutoff || acc == cutoff && c > cutlim)
+		if (any < 0 || acc > cutoff || (acc == cutoff && c > cutlim))
 			any = -1;
 		else {
 			any = 1;
