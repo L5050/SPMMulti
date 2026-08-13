@@ -25,6 +25,51 @@ distribution.
 
 -------------------------------------------------------------*/
 
+/*
+	This version of network_wii has been slightly by Peeeech / Hamptoast
+
+	The changes are as follows, and were simply to avoid gcc compiler warnings
+
+	1. `if (ios_retval < -sizeof(_net_error_code_map)` 
+		-> `if (ios_retval < -static_cast<s32>(sizeof(_net_error_code_map))`
+
+	This was to avoid a "comparison of integer expressions of different signedness" error
+
+	2. 
+
+		ipData->h_name = MEM_PHYSICAL_TO_K0(ipData->h_name) - addrOffset;
+		ipData->h_aliases = MEM_PHYSICAL_TO_K0(ipData->h_aliases) - addrOffset;
+
+		for (i=0; (i < 0x40) && (ipData->h_aliases[i] != 0); i++) {
+			ipData->h_aliases[i] = MEM_PHYSICAL_TO_K0(ipData->h_aliases[i]) - addrOffset;
+		}
+
+		ipData->h_addr_list = MEM_PHYSICAL_TO_K0(ipData->h_addr_list) - addrOffset;
+
+		for (i=0; (i < 0x40) && (ipData->h_addr_list[i] != 0); i++) {
+			ipData->h_addr_list[i] = MEM_PHYSICAL_TO_K0(ipData->h_addr_list[i]) - addrOffset;
+		}
+
+	->
+
+		ipData->h_name = static_cast<char*>(MEM_PHYSICAL_TO_K0(ipData->h_name)) - addrOffset;
+		ipData->h_aliases = static_cast<char**>(MEM_PHYSICAL_TO_K0(ipData->h_aliases)) - addrOffset;
+
+		for (i=0; (i < 0x40) && (ipData->h_aliases[i] != 0); i++) {
+			ipData->h_aliases[i] = static_cast<char*>(MEM_PHYSICAL_TO_K0(ipData->h_aliases[i])) - addrOffset;
+		}
+
+		ipData->h_addr_list = static_cast<char**>(MEM_PHYSICAL_TO_K0(ipData->h_addr_list)) - addrOffset;
+
+		for (i=0; (i < 0x40) && (ipData->h_addr_list[i] != 0); i++) {
+			ipData->h_addr_list[i] = static_cast<char*>(MEM_PHYSICAL_TO_K0(ipData->h_addr_list[i])) - addrOffset;
+		}
+
+	Each call to `MEM_PHYSICAL_TO_K0()` was wrapped with a static_cast to the ipData variable's final return type to silence 
+	pointer-arithmetic errors
+
+*/
+
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
@@ -241,7 +286,7 @@ static s32 _net_convert_error(s32 ios_retval)
 {
 //	return ios_retval;
 	if (ios_retval >= 0) return ios_retval;
-	if (ios_retval < -sizeof(_net_error_code_map)
+	if (ios_retval < -static_cast<s32>(sizeof(_net_error_code_map))
 		|| !_net_error_code_map[-ios_retval])
 			return NET_UNKNOWN_ERROR_OFFSET + ios_retval;
 	return -_net_error_code_map[-ios_retval];
@@ -395,17 +440,17 @@ struct hostent * Mynet_gethostbyname(char *addrString)
 	ipData = ((struct hostent*)ipBuffer);
 	addrOffset = (u32)MEM_PHYSICAL_TO_K0(ipData->h_name) - ((u32)ipBuffer + 0x10);
 
-	ipData->h_name = MEM_PHYSICAL_TO_K0(ipData->h_name) - addrOffset;
-	ipData->h_aliases = MEM_PHYSICAL_TO_K0(ipData->h_aliases) - addrOffset;
+	ipData->h_name = static_cast<char*>(MEM_PHYSICAL_TO_K0(ipData->h_name)) - addrOffset;
+	ipData->h_aliases = static_cast<char**>(MEM_PHYSICAL_TO_K0(ipData->h_aliases)) - addrOffset;
 
 	for (i=0; (i < 0x40) && (ipData->h_aliases[i] != 0); i++) {
-		ipData->h_aliases[i] = MEM_PHYSICAL_TO_K0(ipData->h_aliases[i]) - addrOffset;
+		ipData->h_aliases[i] = static_cast<char*>(MEM_PHYSICAL_TO_K0(ipData->h_aliases[i])) - addrOffset;
 	}
 
-	ipData->h_addr_list = MEM_PHYSICAL_TO_K0(ipData->h_addr_list) - addrOffset;
+	ipData->h_addr_list = static_cast<char**>(MEM_PHYSICAL_TO_K0(ipData->h_addr_list)) - addrOffset;
 
 	for (i=0; (i < 0x40) && (ipData->h_addr_list[i] != 0); i++) {
-		ipData->h_addr_list[i] = MEM_PHYSICAL_TO_K0(ipData->h_addr_list[i]) - addrOffset;
+		ipData->h_addr_list[i] = static_cast<char*>(MEM_PHYSICAL_TO_K0(ipData->h_addr_list[i])) - addrOffset;
 	}
 
 	errno = 0;
