@@ -333,7 +333,7 @@ s32 evtGetValue(EvtEntry * entry, EvtVar variable);
 /*
     Sets the value of an evt variable
 */
-s32 evtSetValue(EvtEntry * entry, EvtVar variable, s32 value);
+s32 evtSetValue(EvtEntry * entry, EvtVar variable, void* value);
 
 /*
     Gets the value of a float evt variable

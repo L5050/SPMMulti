@@ -56,7 +56,7 @@ typedef f32 (IntplUserFunc)(s32, s32, f32, f32);
 
 #endif
 
-#define RAND_MAX 0x7fff
+//#define RAND_MAX 0x7fff
 
 
 /*
