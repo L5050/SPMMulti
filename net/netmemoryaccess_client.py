@@ -1,100 +1,112 @@
 import os
 import ctypes
+from re import L
 import struct
 import time
 import sys
 import asyncio
 import threading
 import queue
-from tkinter import ttk
-from tkinter import *
-from tkinter import font
-from tkinter.ttk import *
-from enum import IntEnum, StrEnum
+from tkinter import * #type: ignore
+from tkinter.ttk import * #type: ignore
+from enum import IntEnum
 
-#region: const
+# my beloved
+import traceback
+
+#region breakdown
+# =============================================================================
+# SPMAP NETWORK PIPELINE
+#
+#   Tkinter / Main Thread
+#          |
+#          | creates packets / reads log_queue
+#          v
+#      cmd_queue  -------------------------------+
+#          |                                     |
+#          |                                     |
+#          v                                     |
+#   +------------------- ASYNC WORKER THREAD -------------------+
+#   |                                                           |
+#   |  HeartbeatController                                      |
+#   |    -> owns worker thread + asyncio event loop             |
+#   |    -> starts/stops SPMAPClient.run()                      |
+#   |                                                           |
+#   |  SPMAPClient TaskGroup                                    |
+#   |                                                           |
+#   |    connection_loop                                        |
+#   |      -> opens/closes TCP connection                       |
+#   |      -> provides self.reader / self.writer                |
+#   |                                                           |
+#   |    writer_loop                                            |
+#   |      cmd_queue -> writer.write() -> Wii                   |
+#   |                                                           |
+#   |    reader_loop                                            |
+#   |      Wii -> [u16 length][payload] -> log / handler        |
+#   |                                                           |
+#   |    heartbeat_loop                                         |
+#   |      -> tracks async lifetime / shutdown state            |
+#   |                                                           |
+#   +-----------------------------------------------------------+
+#                          |
+#                          v
+#                      log_queue
+#                          |
+#                          v
+#                     Tkinter GUI
+#
+#   shutdown Event -> shared stop signal for all async loops
+# =============================================================================
+
+#region const
+""" 
+    Localhost HOST and PORT to sync with game
+    Const values for hiding CMD window upon opening TK window
+    Geometry for what size to open window at     
+"""
 HOST = "127.0.0.1"
 PORT = 5555
-TEST = False
-heartbeat_running = True
 
 SW_HIDE = 0
 SW_SHOW = 5
 
 geometry = "800x600"
 
-global loop
-loop = True
 
-global HELP
-HELP = False
 
-#Overview of command categories and their respective commands for GUI dropdown (WIP)
-"""
-CATEGORIES:
-- reader: Commands that read data from the Wii (e.g., current item index, busy state)
-- base: Core commands that interact with game mechanics (e.g., giving items, setting indices, map interactions)
-- effect: Commands that trigger visual or audio effects in the game (e.g., testing an effect command)
-    ...
-COMMANDS:
-- reader:
-    - CMD_rIDX: Reads the current item index from the game.
-    - CMD_rBUSY: Reads the current busy state of the game.
-- base:
-    - CMD_ITEM: Command to give an item to the player (expects an integer itemID)
-    - CMD_IDX: Command to set the current item index (expects an integer idx)
-"""
-CATEGORIES = {
-    "reader": 0x00,
-    "base": 0x01,
-    }
-COMMANDS = {
-    "reader": {
-        "CMD_rIDX": 0x00,
-        "CMD_rBUSY": 0x01,
-    },
-    "base": {
-        "CMD_ITEM": 0x00,
-        "CMD_IDX": 0x01,
-    },
-}
-
-class CommandDisplay(StrEnum):
-    """User-friendly command descriptions for GUI display (WIP)"""
-    #Read Commands
-    CMD_rIDX = "Read IDX ()"
-    CMD_rBUSY = "Read Busy State ()"
-    
-    #Base Commands
-    CMD_ITEM = "Item Command (Int: itemID)"
-    CMD_IDX = "Set IDX (Int: idx)"
-
-def toggleHelp():
-    global HELP
-    HELP = not HELP
-
-#region: barebones tkinter GUI for item sending and state display (WIP)
+#region tkinter GUI
 def start_gui():
-    #GUI Helpers
+    """
+        barebones async-threaded GUI with send/recv loop handler 
+    """
 
-    #custom callback to catch exceptions in the Tkinter main loop and exit gracefully
+    """ Custom callback to catch exceptions in the Tkinter main loop and exit gracefully """
     def report_callback_exception(exc, val, tb):
-        root._fatal_error = (exc, val, tb)
+        root._fatal_error = (exc, val, tb) #type: ignore
         if hasattr(root, "poll_id"):
-            root.after_cancel(root.poll_id)
+            root.after_cancel(root.poll_id) #type: ignore
         root.destroy()  # Exit the main loop
 
+
+    """ Enables log box, adds line + \n, ends, and disables """
     def append_log(msg):
         log_box.config(state='normal')
         log_box.insert('end', msg + "\n")
         log_box.see('end')
         log_box.config(state='disabled')
 
+
+    """ Clears log box """
     def clear_log():
         log_box.config(state='normal')
         log_box.delete('1.0', 'end')
         log_box.config(state='disabled')
 
+
+    """ Non-blocking log polling helper; 
+    dumps queue to the log in order, to allow multiple 
+    to be made simultaneously without losing logs 
+    """
     def poll_logs():
         try:
             while True:
@@ -103,349 +115,103 @@ def start_gui():
         except queue.Empty:
             pass
 
-        root.poll_id = root.after(100, poll_logs)  # run again in 100 ms
+        #run again in 100 ms
+        root.poll_id = root.after(100, poll_logs)  #type: ignore 
 
+
+    """ Universal packet setup to ensure that struct creation is handled in one place """
     def setup_packet():
-        global HELP
-        category = cat.get()
-        command_display = cmd.get()
-        command = CommandDisplay(command_display).name
         try:
-            if HELP:
-                header = struct.pack(">BBH", 0xFF, 0xFF, 6) #special header to signal help request
-                payload = struct.pack(">BB", CATEGORIES[category], COMMANDS[category][command])
-                packet = header + payload
-                return packet
+            #5 byte magic + payload (index, id)
+            packet = struct.pack(">5s", "SPMAP".encode())
+            """ 
+                The payloads being sent to the game are the 5 digit Magic Value
+                to verify packets, a half for the item index, and a byte for the item id 
+            """
+            payload = struct.pack(f">HB", 1500, 13)
 
-            #reader commands have no payload, so we can skip the packet setup and just return the cmdID for the state machine to handle
-            catID = CATEGORIES[category]
-            if catID == 0x00:
-                header = struct.pack(">BBH", catID, COMMANDS[category][command], 4) #reader commands have a fixed length of 4 (header only, no payload)
-                return header
-            
-            #for non-reader commands, we need to include the payload from the command box in the GUI
-                #the payload will vary later on as we add more commands, but for now we can just take the raw string input and encode it as bytes to send to the state machine
-            cmdID = COMMANDS[category][command]
-            header = struct.pack(">BBH", catID, cmdID, 0) #length will be calculated in the client loop to account for variable payloads, so just set to 0 here
+            return packet + payload
 
-            #WIP method to send custom payloads with varying types
-            raw = client.cmd_var.get()
+        except Exception as e:
+            print(e)
 
-            payload = bytearray()
-            tokens = "idfs" #integer, string, float, double
+    """ Simple wrapper to ensure connection and create/queue packet; packet preview on attempt """
+    def commandHandler():
+        packet = None
 
-            i = 0
-            n = len(raw)
-            while i < n:
-                t = raw[i]
-                i += 1
-
-                if t == 'i': #integer
-
-                    start = i
-                    while i < n and raw[i] not in tokens and not raw[i].isspace():
-                        i += 1
-                    value = int(raw[start:i].strip())
-                    payload += b'i'
-                    payload += struct.pack(">i", value)
-
-                elif t == 'f': #float
-
-                    start = i
-                    while i < n and raw[i] not in tokens and not raw[i].isspace():
-                        i += 1
-                    value = float(raw[start:i].strip())
-                    payload += b'f'
-                    payload += struct.pack(">f", value)
-
-                elif t == 'd': #double
-
-                    start = i
-                    while i < n and raw[i] not in tokens and not raw[i].isspace():
-                        i += 1
-                    value = float(raw[start:i].strip())
-                    payload += b'd'
-                    payload += struct.pack(">d", value)
-
-                elif t == 's':
-
-                    if i >= n or raw[i] != '"':
-                        client.log('String type must be quoted (e.g., s"Hello world")')
-                        return None
-
-                    i += 1
-                    start = i
-
-                    while i < n and raw[i] != '"':
-                        i += 1
-
-                    if i >= n:
-                        client.log("Unterminated string")
-                        return None
-
-                    value = raw[start:i]
-                    i += 1
-
-                    encoded = value.encode()
-
-                    payload += b's'
-                    payload += struct.pack(">H", len(encoded))
-                    payload += encoded
-
-                elif t == ' ': #skip whitespace
-                    continue
-
-                else:
-                    raise ValueError(f"Unknown token {t} in payload")
-
-            length = len(header) + len(payload)
-            packet = struct.pack(">BBH", catID, cmdID, length) + payload
-            return packet
-        
-        except KeyError as e:
-            missing = e.args[0]
-            if missing == 'Select Category':
-                client.log("No category selected.")
-            elif missing == 'Select Command':
-                client.log("No command selected.")
-            else:
-                client.log(f"Invalid category or command: {category}, {command}")
-
-    def resize_cmd_box(category, values):
-        max_pixels = 0
-
-        for c in [category]:
-            width = GUIFont.measure(str(c))
-            if width > max_pixels:
-                max_pixels = width
-
-        cat_char_width = GUIFont.measure("0")
-        category_width_chars = int(max_pixels / cat_char_width) + 2
-        cat.config(width=category_width_chars)
-
-        for v in values:
-            width = GUIFont.measure(str(v))
-            if width > max_pixels:
-                max_pixels = width
-
-        # Convert pixels → character width
-        cmd_char_width = GUIFont.measure("0")
-        cmd_width_chars = int(max_pixels / cmd_char_width) + 2
-        cmd.config(width=cmd_width_chars)
-
-    def commandHandler(passThru=False):
-        global HELP
-        if cat.get() == "Select Category" or cmd.get() == "Select Command":
-            client.log("Please select a valid category and command before sending.")
-            return
-        
-        if passThru:
-            packet = setup_packet()
-            if packet:
-                id = struct.unpack(">BB", packet[:2])
-                length = struct.unpack(">H", packet[2:4])[0]
-                payload = packet[4:]
-                if HELP:
-                    client.log(f"Planned packet: {packet.hex()}\nHELP MODE: Requesting args for Category: {payload[0]:02X}, Command: {payload[1]:02X}")
-                    return
-                
-                client.log(f"Planned packet: {packet.hex()}\nCategory: {id[0]:02X}, Command: {id[1]:02X}, Length: {length}, Payload: {payload.hex()}")
-            else:
-                return
-            return
-        
         if client.running:
-            packet = setup_packet()
+            if packet == None:
+                packet = setup_packet()
+
+                append_log(f"Packet: {packet}")
+
             if packet:
                 client.cmd_queue.put(packet)
                 client.log(f"Queueing command: {packet.hex()}")
-                append_log(f"Queued command: {cmd.get()}")
+                append_log(f"Queued command: \"AP\"")
             else:
                 return
         else:
-            append_log(f"Client is not alive, cannot queue command: {cmd.get()}")
-
-    def preview_params(text: str) -> str:
-        tokens = "idfsbp"
-        i = 0
-        n = len(text)
-
-        parts = []
-        while i < n:
-            t = text[i]
-            i += 1
-
-            if t.isspace():
-                continue
-
-            if t in ("i", "f", "d"):
-                if t == "i":
-                    type_name = "Int"
-                elif t == "f":
-                    type_name = "Float"
-                else:
-                    type_name = "Double"
-                start = i
-                while i < n and (text[i] not in tokens):
-                    i += 1
-                num_str = text[start:i].strip()
-                if not num_str:
-                    parts.append(f"{type_name}(?)")
-                    continue
-
-                try:
-                    if t == "i":
-                        parts.append(f"Int({int(num_str)})")
-                    elif t == "f":
-                        parts.append(f"Float({float(num_str)})")
-                    else:
-                        parts.append(f"Double({float(num_str)})")
-                except ValueError:
-                    parts.append(f"{type_name}(!)")
-
-            if t == "s":
-                type_name = "Str"
+            packet = setup_packet()
+            append_log(f"Packet: {packet}")
             
-                # require quoted string
-                if i >= n or text[i] != '"':
-                    parts.append(f'{type_name}(?)')
-                    continue
-                i += 1
-                start = i
-                while i < n and text[i] != '"':
-                    i += 1
-                if i >= n:
-                    parts.append(f'{type_name}(unterminated)')
-                    break
-                s = text[start:i]
+            append_log(f"Client is not alive, cannot queue command: \"AP\"")
 
-                if t == "s":
-                    parts.append(f'Str({s})')
-                    
-                else:
-                    parts.append(f"?{t}")
 
-        if not parts:
-            return "Params: (none)"
-        return "Params: " + ", ".join(parts)
 
+    """ Main() """
     root = Tk()
     root.geometry(geometry)
     client = SPMAPClient() # client instance to sync GUI and heartbeat state
     heartbeat_controller = HeartbeatController(client)
     root.title("SPMAP Client GUI")
-    root._fatal_error = None
-    try:
-        GUIFont = font.Font(family="PaperMarioFont", size=12)
-    except:
-        print("Font failed to initialize.. Falling back")
-        GUIFont = font.Font(family="Calibri", size=12)
 
     root.report_callback_exception = report_callback_exception
 
-    # widgets and layout
-    style = Style()
-    print(style.theme_names())
-    style.theme_use('default')
+    """ Window-Operator Instancing """
+    #essentials
+    restartApp = Button(text="Restart (Test)", command=force_crash)
+    quitApp = Button(text="Quit (test)", command=quit)
+    hbStart = Button(text="Start Heartbeat Thread", command=heartbeat_controller.start)
+    hbStop = Button(text="Stop Heartbeat Thread", command=lambda: heartbeat_controller.stop(client))
 
-    #Configure is for 'permanent settings'
-    style.configure("BW.TButton",
-                    font=GUIFont)
-    
-    #Map is for 'variable button-state settings'; i.e. hover / click
-    style.map("BW.TButton",
-              foreground=[('pressed', 'red'), ('active', 'blue')], #pressed = clicked; active = hover
-              background=[('pressed', 'yellow'), ('active', 'green')],
-              )
-    
-    buttons = Frame(root, width=1000, height=400)
-
-    cmd_var = StringVar()
-
-    command_box = Entry(root, width=30, font=GUIFont, textvariable=cmd_var)
-    command_label = Label(root, text="Params: (none)", anchor='w', font=GUIFont, justify="left")
-    xscroll = ttk.Scrollbar(root, orient="horizontal", command=command_box.xview)
-
+    #user-side
     log_box = Text(root, height=10, state='disabled')
-    help_button = ttk.Checkbutton(root, text="Help (Request the game to send the arg(s) for the selected command)", command=toggleHelp)
+    testCom = Button(text="Send Command", command=lambda: commandHandler())
+    clear = Button(text="Clear Log", command=clear_log)
 
-    cat = ttk.Combobox(buttons, values=list(CATEGORIES.keys()), state="readonly", font=GUIFont)
-    cat.set("Select Category")
-
-    cmd = ttk.Combobox(buttons, values=list(), state="readonly", font=GUIFont)
-    cmd.set("Select Command")
-
-    restartApp = Button(buttons, text="Restart (Test)", command=force_crash)
-    quitApp = Button(buttons, text="Quit (test)", command=quit)
-    hbStart = Button(buttons, text="Start Heartbeat Thread", command=heartbeat_controller.start)
-    hbStop = Button(buttons, text="Stop Heartbeat Thread", command=lambda: heartbeat_controller.stop(client))
-    testCom = Button(buttons, text="Test Command (mapInteract)", command=lambda: commandHandler())
-    clear = Button(buttons, text="Clear Log", command=clear_log)
-    testPacket = Button(buttons, text="See planned packet (Test)", command=lambda: commandHandler(passThru=True), style="BW.TButton")
-
-    buttons.place(relx=0.0, rely=0.0, anchor='nw')
+    """ Operator Placement """
+    #essentials
     restartApp.place(relx=0.0, rely=0.0, anchor='w', x=5, y=30)
     quitApp.place(relx=0.0, rely=0.0, anchor='w', x=5, y=60)
     hbStart.place(relx=0.0, rely=0.0, anchor='w', x=5, y=90)
     hbStop.place(relx=0.0, rely=0.0, anchor='w', x=5, y=120)
+
+    #user-side
     testCom.place(relx=0.0, rely=0.0, anchor='w', x=5, y=150)
-    testPacket.place(relx=0.0, rely=0.0, anchor='w', x=5, y=180)
-
-    cat.place(relx=0.0, rely=0.0, anchor='w', x=5, y=210)
-    cmd.place(relx=0.0, rely=0.0, anchor='w', x=5, y=240)
-
-    clear.place(anchor='se', x=20, y=10)
-    command_box.place(relx=0.0, rely=0.0, anchor='w', x=5, y=270)
-    xscroll.place(relx=0.0, rely=0.0, anchor='w', x=5, y=270 + 22, width=240)  # tweak y/width as needed
-    command_label.place(relx=0.0, rely=0.0, anchor='w', x=5, y=350)
-    command_box.configure(xscrollcommand=xscroll.set)
-
-    def on_cmd_change(*_):
-        text = cmd_var.get()
-        command_label.config(text=preview_params(text))
-
-    cmd_var.trace_add("write", on_cmd_change)
-
-    client.cmd_var = cmd_var
+    clear.place(relx=0.0, rely=1.0, anchor='sw', x=10, y=-10)
 
 
-    def update_commands(event=None):
-        category = cat.get()
-
-        if category in COMMANDS:
-            cmds = COMMANDS[category]
-            cat_display_value = category.capitalize()
-            cmd_display_values = []
-
-            for cmd_name in cmds.keys():
-                try:
-                    cmd_display_values.append(CommandDisplay[cmd_name])
-                except KeyError:
-                    # Fallback if display enum missing
-                    cmd_display_values.append(cmd_name)
-
-            cmd['values'] = cmd_display_values
-            cmd.set("Select Command")
-
-            resize_cmd_box(cat_display_value, cmd_display_values)
-
+    """ Dynamically update the layout of the log box based on the current window size """
     def update_layout(event=None):
-        """Dynamically update the layout of the log box and heart pillar based on the current window size."""
         window_height = root.winfo_height()
         window_width = root.winfo_width()
 
-        help_button.place_configure(relx=1.0, rely=0.0, x=-10, y=10, anchor='ne')
-        log_box.place_configure(relx=0, rely=1.0, x=10,y=-10, height=window_height//3, width=window_width*(4/5), anchor='sw')
+        log_box.place_configure(relx=0, rely=1.0, x=10,y=-20, height=window_height//3, width=window_width*(4/5), anchor='sw')
 
+    # <Configure> means any window movement / resizing; keeping size and log-box consistent ratio-wise
     root.bind('<Configure>', update_layout)
-    cat.bind('<<ComboboxSelected>>', update_commands)
 
+    # Poll logs to write every ~100 ms
     root.after(100, poll_logs)
     return root
 
+""" Used for iterative restart-testing; allows script reload with 1 click """
 def force_crash():
     raise RuntimeError("Intentional Tkinter crash for testing")
 
+
+""" hide/show console | used to hide cmd window when opening with cmd (win64) """
 def hide_console():
     hwnd = ctypes.windll.kernel32.GetConsoleWindow()
     if hwnd:
@@ -457,19 +223,22 @@ def show_console():
         ctypes.windll.user32.ShowWindow(hwnd, SW_SHOW)
         ctypes.windll.user32.SetForegroundWindow(hwnd)
 
-#region: heartbeat
+#region heartbeat
+""" Controls the worker thread / asyncio event loop that runs SPMAPClient """
 class HeartbeatController:
     def __init__(self, client):
         self.client = client
         self.thread = None
         self.loop = None
 
+    """ Worker-thread entry point; creates/stores its asyncio loop and runs the client """
     def _thread_target(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         self.loop = loop
         loop.run_until_complete(self.client.run())
 
+    """ Asyncio main thread startup / stop """
     def start(self):
         if self.thread and self.thread.is_alive():
             self.client.log("Heartbeat thread already running.")
@@ -488,7 +257,7 @@ class HeartbeatController:
         client.heartbeat_enabled.set()  # Ensure heartbeat loop isn't waiting when we signal shutdown
         self.client.running = False
 
-        self.loop.call_soon_threadsafe(self.client.shutdown.set)  # Signal the client to shut down
+        self.loop.call_soon_threadsafe(self.client.shutdown.set)  #type: ignore | Signal the client to shut down
         threading.Thread(
             target=self.__join_thread,
             daemon=True
@@ -497,20 +266,32 @@ class HeartbeatController:
         while not self.client.cmd_queue.empty():
             self.client.cmd_queue.get_nowait()
 
+    """ 
+        separated tiny thread uses this to join post-shutdown;
+        keeps the TK window running smooth even if shutdown delayed
+    """
     def __join_thread(self):
-        self.thread.join()
+        self.thread.join() #type: ignore
 
         self.thread = None
         self.loop = None
         self.client.log("Heartbeat thread stopped.")
 
+"""
+    Top-level network client
+
+    Created / owned by Tkinter main thread
+    Executed inside HeartbeatController's asyncio worker thread
+
+    Owns shared network state and spawns the async TaskGroup loops
+"""
+#region SPMAP
 class SPMAPClient:
     def __init__(self):
         self.cmd_queue = queue.Queue()
         self.log_queue = queue.Queue()
         self.log("SPMAPClient initialized.")
 
-        self.send_queue = None
         self.shutdown = None
         self.heartbeat_enabled = None
         self.beat = 0
@@ -521,20 +302,22 @@ class SPMAPClient:
 
         self.command_box = None
 
+    """ Create management queues and events """
     async def init_async(self):
-        self.heartbeat_controller = HeartbeatController(self)
-        self.send_queue = asyncio.Queue()
         self.shutdown = asyncio.Event()
         self.heartbeat_enabled = asyncio.Event()
         self.heartbeat_enabled.set()
 
-        self.pending = {}
         self.reader = None
         self.writer = None
         self.beat = 0
 
-    #Loops
+    #region hb loop
+    """ Overhead loop, handles global shutdown call """
     async def heartbeat_loop(self):
+        if not self.shutdown or not self.heartbeat_enabled:
+            raise Exception("[SPMAPClient] [heartbeat_loop] self.shutdown or self.heartbeat_enabled missing? FATAL")
+
         while not self.shutdown.is_set():
 
             # If heartbeat is disabled, wait until enabled OR shutdown
@@ -558,108 +341,102 @@ class SPMAPClient:
                 await asyncio.wait_for(self.shutdown.wait(), timeout=1.0)
             except asyncio.TimeoutError:
                 pass
+
+    """
+        Packet writing loop
+
+        If conditions are met, pushes packet to Wii with self.writer.write(packet)
+        |
+        |   self.writer = open asyncio connection()
+    """
+    #region write loop
     async def writer_loop(self):
+        if not self.shutdown:
+            raise Exception("[SPMAPClient] [writer_loop] self.shutdown missing? FATAL")
+
+        # break on shutdown
         while not self.shutdown.is_set():
+
+            # continue on empty
             if self.writer is None:
                 await asyncio.sleep(0.1)
                 continue
 
+            # overhead error catch
             try:
-                try:
-                    packet = await asyncio.wait_for(
-                        self.send_queue.get(),
-                        timeout=0.25
-                    )
-                except asyncio.TimeoutError:
-                    continue
-                self.writer.write(packet)
 
+                # packet-write error catch
+                try:
+                    packet = self.cmd_queue.get_nowait()
+
+                # pass on empty
+                except queue.Empty:
+                    await asyncio.sleep(0.05)
+                    continue
+
+                self.writer.write(packet)
                 await self.writer.drain()
-                self.log(f"Sent command {packet.hex()}")
 
             except Exception as e:
                 self.log(f"Writer error: {e}")
+                self.shutdown.set() #type: ignore
 
-                await self.heartbeat_controller.stop(self)
-                await self.reset_connection_state()
+    """
+        Packet receiving loop
 
+        Reads a 2-byte payload length, then reads exactly that many payload bytes.
+        Currently forwards decoded payloads to the GUI log.
+    """
+    #region read loop
     async def reader_loop(self):
+        if not self.shutdown:
+            raise Exception("[SPMAPClient] [reader_loop] self.shutdown missing? FATAL")
+
+        # break on shutdown
         while not self.shutdown.is_set():
 
+            # continue on empty
             if self.reader is None:
                 await asyncio.sleep(0.1)
                 continue
 
+            # read packet
             try:
-                header = await asyncio.wait_for(self.reader.readexactly(4), timeout=2.0)
-                cmdID, length = struct.unpack(">HH", header)
+                payloadLen = int.from_bytes(await asyncio.wait_for(self.reader.readexactly(2), timeout=2.0))
 
-                payload_size = length - 4
-                payload = await asyncio.wait_for(self.reader.readexactly(payload_size), timeout=2.0)
+                payload = await asyncio.wait_for(self.reader.readexactly(payloadLen), timeout=2.0)
 
-                self.log(
-                f"Received packet cmd={cmdID:04X} len={length}\n"
-                )
-
-                future = self.pending.pop(cmdID, None)
-
-                if future:
-                    """This is where client-initiated packet responses are handled"""
-                    future.set_result(payload)
-
-                    if cmdID == 0xFFFF: #help response
-                        self.log(f"Help message (arg(s))\n{payload.decode(errors='ignore')}")
+                self.log(f"[Packet] {payload.decode()}")
                     
-                    elif cmdID == 0x0000: #rIdx response
-                        idx = struct.unpack(">I", payload)[0]
-                        self.log(f"Current item index: {idx}")
-                    elif cmdID == 0x0001: #rBusy response
-                        busy_state = struct.unpack(">I", payload)[0]
-                        self.log(f"Current busy state: {busy_state} ({toDebug(busy_state)})")
 
-                    else:
-                        self.log(f"\n{payload.decode()}\n")
-
-                else:
-                    """This is where non-client-initiated packets would be handled"""
-                    packetString = payload.decode(errors='ignore') if payload else ''
-                    self.log(
-                        f"Unexpected packet {cmdID:04X}\n{packetString}"
-                    )
             except asyncio.TimeoutError:
                 continue
 
             except asyncio.IncompleteReadError:
                 self.log("Connection closed by Wii.")
-                await self.heartbeat_controller.stop(self)
-                await self.reset_connection_state()
+                self.shutdown.set() #type: ignore
 
             except Exception as e:
                 self.log(f"Reader error: {e}")
 
-                await self.heartbeat_controller.stop(self)
-                await self.reset_connection_state()
+                self.shutdown.set() #type: ignore
+ 
+    """
+        TCP connection lifecycle
 
-    async def state_machine(self, packet=None):
-        while not self.shutdown.is_set():
-            try:
-                packet = self.cmd_queue.get_nowait()
-            except queue.Empty:
-                await asyncio.sleep(0.1)  # Avoid busy waiting
-                continue
-
-            try:
-                self.log(f"Processing command from GUI: {packet.hex()}")
-                cmdID = struct.unpack(">B", packet[:1])[0]
-                expect_response = True
-
-                await self.send_command(packet, expect_response=expect_response)
-            except Exception as e:
-                self.log(f"Error processing command: {e}")
-
+        Opens reader/writer streams, keeps the connection alive until shutdown,
+        then closes the stream and clears connection state.
+    """
+    #region conn loop
     async def connection_loop(self):
+        if not self.shutdown:
+            raise Exception("[SPMAPClient] [connection_loop]: self.shutdown missing | FATAL")
+        
         self.running = True
+        # Break if shutdown
         while not self.shutdown.is_set():
+
+            #try connection
             try:
                 self.log("Connecting to Wii..")
 
@@ -679,6 +456,7 @@ class SPMAPClient:
 
                 await asyncio.sleep(2)
 
+            # cleanup on close
             finally:
                 if self.writer:
                     self.log("Closing connection")
@@ -689,59 +467,28 @@ class SPMAPClient:
                 await self.reset_connection_state()
                 self.running = False
 
-    #Commands
-    async def send_command(self, packet, expect_response=False, timeout=5.0):
-        cmdID = struct.unpack(">H", packet[:2])[0]
-        future = None
-        if expect_response:
-            future = asyncio.get_running_loop().create_future()
-            self.pending[cmdID] = future
 
-        await self.send_queue.put((packet))
-
-        if not expect_response:
-            return None
-
-        try:
-            return await asyncio.wait_for(future, timeout=timeout)
-        except asyncio.TimeoutError:
-            self.pending.pop(cmdID, None)
-            self.log(f"Timeout waiting for response to {cmdID:04X}")
-            return None
-    
-    def handle_response(self, packet):
-        header = struct.unpack(">BB", packet[:2])
-        cat = header[0]
-        cmd = header[1]
-
-        if cat == 0x00: #reader category
-            if cmd == 0x00: #rIdx response
-                self.log(f"Sent rIdx command... ")
-            elif cmd == 0x01: #rBusy response
-                self.log(f"Sent rBusy command...")
-
-        else:
-            self.log(f"Received response for unknown cmd {cmd}: {packet.hex()}")
-
+    #region log
     def log(self, msg):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        self.log_queue.put(f"[{timestamp}] {msg}")
+        self.log_queue.put(f"{msg}")
 
     async def run(self):
         await self.init_async()
         try:
             async with asyncio.TaskGroup() as tg:
-                tg.create_task(self.heartbeat_loop())
-                tg.create_task(self.writer_loop())
-                tg.create_task(self.reader_loop())
-                tg.create_task(self.state_machine())
-                tg.create_task(self.connection_loop())
+                tg.create_task(self.heartbeat_loop(), name="heartbeat_loop")
+                tg.create_task(self.writer_loop(), name="writer_loop")
+                tg.create_task(self.reader_loop(), name="reader_loop")
+                tg.create_task(self.connection_loop(), name="connection_loop")
+
         except* asyncio.CancelledError:
             print("Tasks cancelled, shutting down.")
-            pass
-        except* Exception as e:
-            print(f"Unexpected error in client run loop: {e!r}")
-            self.shutdown.set()  # Ensure shutdown on unexpected errors
+
+        except* Exception as eg:
+            print("Unexpected error in client run loop:")
+            traceback.print_exception(eg)
+            self.shutdown.set()  #type: ignore | Ensure shutdown on unexpected errors
 
     async def reset_connection_state(self):
         self.log("Resetting connection state")
@@ -750,35 +497,10 @@ class SPMAPClient:
         self.reader = None
         self.writer = None
 
-        # Clear send queue
-        while not self.send_queue.empty():
-            try:
-                self.send_queue.get_nowait()
-            except asyncio.QueueEmpty:
-                break
+#region client-end
 
-        # Cancel pending futures
-        for cmd, future in self.pending.items():
-            if not future.done():
-                future.cancel()
 
-        self.pending.clear()
-
-class Reader(IntEnum):
-    CMD_rIDX = 0
-    CMD_rBUSY = 1
-
-class busyEnum(IntEnum):
-    NOT_BUSY = 0
-    SCENE_BUSY = 1
-    BUSY = 2
-
-def toDebug(value: int) -> str:
-    if value == 0:
-        return "Not busy"
-    else:
-        return "Busy"
-    
+""" Simple restart func to effectively reload script | Iterative testing my beloved """    
 def restart_program():
     print("Restarting script..\n")
     time.sleep
@@ -795,7 +517,7 @@ def main():
             root.mainloop()
 
             if getattr(root, "_fatal_error", None):
-                exc, val, tb = root._fatal_error
+                exc, val, tb = root._fatal_error #type: ignore
                 raise val.with_traceback(tb)
 
             print("GUI closed normally")
@@ -805,7 +527,6 @@ def main():
 
             show_console()
 
-            import traceback
             print("GUI error:")
             traceback.print_exc()
 
@@ -828,14 +549,7 @@ def load_font(path):
 
 if __name__ == "__main__":
     os.system('cls' if os.name == 'nt' else 'clear')
-    #hide_console() #NOTE: console hide command
+    hide_console() #NOTE: console hide command
     loop = True
-
-    try:
-        import ctypes
-        from ctypes import wintypes
-        load_font("./fonts/PaperMarioFont.ttf")
-    except Exception as e:
-        print(f"Failed to load font..")
 
     main()
