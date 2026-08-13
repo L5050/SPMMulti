@@ -1,5 +1,6 @@
 #pragma once
 #include <common.h>
+#include <wii/os/OSMutex.h>
 #include <wii/os/OSThread.h>
 
 namespace NetMemoryAccess {
@@ -18,10 +19,12 @@ typedef enum {
 #define NETMEMORYACCESS_EOF '\n'
 #define NETMEMORYACCESS_EOF_SIZE sizeof(char) //msl::string::strlen(NETMEMORYACCESS_EOF)
 
-#define MAX_OUTGOING 32
+#define MAX_OUTGOING 500
+
+extern wii::os::OSMutex gAckMutex;
+extern volatile bool gAckReceived;
 
 struct OutgoingPacket {
-    u16 cmdID;
     u16 length;
     u8 data[256];
 };
@@ -31,7 +34,6 @@ extern int goutgoingHead;
 extern int goutgoingTail;
 
 bool enqueuePacket(
-    u16 cmdId,
     const void* payload,
     u16 payloadLen
 );

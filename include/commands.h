@@ -15,8 +15,8 @@ u32 handleHelpBinary(const u16 commandId, const u8* payload, size_t payloadLen, 
 u32 handleReadBinary(const u16 commandId, u8* response, size_t responseSize);
 u32 handleBaseBinary(const u16 commandId, const u8* payload, size_t payloadLen, u8* response, size_t responseSize);
 
-#define COMMAND(id, name, description, code) \
-    Command name(id, #name, description, [](const u8* payload, size_t payloadLen, u8* response, size_t responseSize) -> u32 code);
+#define COMMAND(name, description, code) \
+    Command name(#name, description, [](const u8* payload, size_t payloadLen, u8* response, size_t responseSize) -> u32 code);
 
 /*extern Command read;
 extern Command write;
@@ -24,15 +24,7 @@ extern Command write;
 extern Command msgbox;*/
 
 //Special case Help command
-extern Command help; // 0xFFFF
-
-// Read Commands
-extern Command ridx; // 0x0000
-extern Command rbusy; // 0x0001
-
-// Base Commands
-extern Command item; // 0x0100
-extern Command idx; // 0x0101
+extern Command ap;
 
 /*EVT_DECLARE(msgbox_cmd)
 EVT_DECLARE(fwd_msgbox_cmd)
