@@ -470,13 +470,6 @@
 80542470:SaveStart
 80542474:SaveEnd
 
-// new to SPMNetMemoryAccess
-802754d0:OSYieldThread
-8027550c:OSCreateThread
-80275b74:OSResumeThread
-802587ac:memcmp
-80296b74:IOS_Ioctlv
-80542350:spm_errno
 // new to v10
 805419D0:seq_load_sub_wp
 80541AB0:nandmgr_wp

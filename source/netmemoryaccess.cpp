@@ -23,11 +23,10 @@
 
 namespace NetMemoryAccess {
 
-    /* These are a stored queue for how many outgoing packets the game can stack */
     OutgoingPacket outgoingPackets[MAX_OUTGOING]; 
     int goutgoingHead = 0; 
     int goutgoingTail = 0; 
-    alignas(32) u8 stack[STACK_SIZE];
+    alignas(32) u8 stack[STACK_SIZE]; 
     wii::os::OSThread thread;
 
     // --- connection state shared by recv + send threads ---
@@ -59,7 +58,6 @@ namespace NetMemoryAccess {
             gConnMutexInit = true;
         }
     }
-
 
     static inline void SetConnection(s32 fd)
     {
@@ -96,8 +94,7 @@ namespace NetMemoryAccess {
         );
     }
 
-    
-    static bool PeekOutgoing(OutgoingPacket* out)
+    static bool DequeueOutgoing(OutgoingPacket* out)
     {
         OSLockMutex(&gQueueMutex);
 
@@ -107,19 +104,10 @@ namespace NetMemoryAccess {
         }
 
         *out = outgoingPackets[goutgoingTail];
+        goutgoingTail = (goutgoingTail + 1) % MAX_OUTGOING;
+
         OSUnlockMutex(&gQueueMutex);
         return true;
-    }
-
-    static void PopOutgoing()
-    {
-        OSLockMutex(&gQueueMutex);
-
-        if (goutgoingTail != goutgoingHead) {
-            goutgoingTail = (goutgoingTail + 1) % MAX_OUTGOING;
-        }
-
-        OSUnlockMutex(&gQueueMutex);
     }
 
     // send exactly len bytes (blocking, but robust to partial writes / retryable returns)
@@ -144,37 +132,17 @@ namespace NetMemoryAccess {
     static bool RecvAll(s32 fd, u8* buf, int len)
     {
         int off = 0;
-
         while (off < len) {
-            int request = len - off;
-
-            if (request > 4096) {
-                request = 4096;
-            }
-
-            int n = Mynet_read(fd, buf + off, request);
-
-            if (n > 0) {
-                off += n;
-                continue;
-            }
-
-            if (n == 0) {
-                return false;
-            }
-
+            int n = Mynet_read(fd, buf + off, len - off);
+            if (n > 0) { off += n; continue; }
+            if (n == 0) return false;          // peer closed
             if (IsRetryableSockRet(n)) {
                 wii::os::OSYieldThread();
                 continue;
             }
-
-            wii::os::OSReport(
-                "RecvAll failed ret=%d off=%d len=%d req=%d\n",
-                n, off, len, request
-            );
+            wii::os::OSReport("RecvAll read failed ret=%d\n", n);
             return false;
         }
-
         return true;
     }
 
@@ -192,8 +160,7 @@ namespace NetMemoryAccess {
         return res;
     }
 
-
-    bool enqueuePacket(const void* payload, u16 payloadLen)
+    bool enqueuePacket(u16 cmdId, const void* payload, u16 payloadLen)
     {
         OSLockMutex(&gQueueMutex);
 
@@ -215,6 +182,7 @@ namespace NetMemoryAccess {
             len = sizeof(p->data);
         }
 
+        p->cmdID = cmdId;
         p->length = len;
 
         if (len > 0)
@@ -231,6 +199,7 @@ namespace NetMemoryAccess {
     static void senderLoop(u32 param)
     {
         (void)param;
+
         u8 txBuff[BUFSIZE];
 
         while (1) {
@@ -241,23 +210,32 @@ namespace NetMemoryAccess {
             }
 
             OutgoingPacket pkt;
-            if (!PeekOutgoing(&pkt)) {
+            if (!DequeueOutgoing(&pkt)) {
+                // nothing to send right now
                 wii::os::OSYieldThread();
                 continue;
             }
 
-            msl::string::memcpy(txBuff, &pkt.length, 2);
-            msl::string::memcpy(txBuff + 2, pkt.data, pkt.length);
+            u16 frameLen = (u16)(pkt.length + 4);
+            if (frameLen > BUFSIZE) {
+                wii::os::OSReport("Outgoing too big len=%u\n", frameLen);
+                continue;
+            }
 
-            if (!SendAll(fd, txBuff, pkt.length + 2)) {
+            // Build frame
+            msl::string::memcpy(txBuff + 0, &pkt.cmdID, 2);
+            msl::string::memcpy(txBuff + 2, &frameLen, 2);
+            if (pkt.length) {
+                msl::string::memcpy(txBuff + 4, pkt.data, pkt.length);
+            }
+
+            // Send it
+            if (!SendAll(fd, txBuff, frameLen)) {
+                // If send fails, drop connection so recv thread can cleanly close/reaccept
                 wii::os::OSReport("senderLoop: send failed; clearing connection\n");
                 ClearConnection();
                 wii::os::OSYieldThread();
-                continue;
             }
-
-            
-            PopOutgoing();
         }
     }
 
@@ -273,7 +251,7 @@ namespace NetMemoryAccess {
         }
         wii::os::OSReport("Network initialized successfully.\n");
 
-        wii::os::OSReport("initializing commands..    \n");
+        wii::os::OSReport("initializing commands..    ");
         mod::initCommands();
         wii::os::OSReport("commands initialized\n");
 
@@ -321,59 +299,47 @@ namespace NetMemoryAccess {
 
             wii::os::OSReport("client connected fd=%d\n", connfd);
 
-            /* // reset queue on new connection (optional but nice) -- DONT DO THIS FOR AP lmao. need packets to stay alive.
+            // reset queue on new connection (optional but nice)
             OSLockMutex(&gQueueMutex);
             goutgoingHead = 0;
             goutgoingTail = 0;
-            OSUnlockMutex(&gQueueMutex); */
+            OSUnlockMutex(&gQueueMutex);
 
             // publish connection to sender thread
             SetConnection(connfd);
 
             // hello
             const char* hello = "hello from Wii";
-            enqueuePacket(hello, (u16)(msl::string::strlen(hello) + 1));
+            enqueuePacket(0x1001, hello, (u16)(msl::string::strlen(hello) + 1));
 
             bool connected = true;
-            u32 packetLen = 8;
 
             while (connected)
             {
-                // Read 8-byte packet
-                if (!RecvAll(connfd, recvBuff, 8)) {
+                // Read 4-byte header
+                if (!RecvAll(connfd, recvBuff, 4)) {
                     connected = false;
                     break;
                 }
 
-                char magic[5];
-                msl::string::memcpy(&magic, recvBuff, 5);
+                u16 cmdId = 0;
+                u16 packetLen = 0;
+                msl::string::memcpy(&cmdId,    recvBuff + 0, 2);
+                msl::string::memcpy(&packetLen, recvBuff + 2, 2);
 
-                u16 index = 0;
-                u8 id = 0;
+                if (packetLen < 4 || packetLen > BUFSIZE) {
+                    wii::os::OSReport("Bad packet length: %u\n", packetLen);
+                    connected = false;
+                    break;
+                }
 
-                if (msl::string::strcmp(magic, "SPMAP"))
-                {
-                    wii::os::OSReport("String mismatch: %s\n", magic);
-                    for (int i = 0; i < 1024; i += 8)
-                    {
-                        wii::os::OSReport("[%02x], [%02x], [%02x], [%02x], [%02x], [%02x], [%02x], [%02x]\n", 
-                            recvBuff[i], recvBuff[i + 1], recvBuff[i + 2], recvBuff[i + 3], recvBuff[i + 4], recvBuff[i + 5], recvBuff[i + 6], recvBuff[i + 7]);
+                // Read the rest of the packet
+                int bodyLen = (int)packetLen - 4;
+                if (bodyLen > 0) {
+                    if (!RecvAll(connfd, recvBuff + 4, bodyLen)) {
+                        connected = false;
+                        break;
                     }
-
-                    connected = false;
-                    break;
-                }
-
-                wii::os::OSReport("String matched: SPMAP\n");
-
-                msl::string::memcpy(&index, recvBuff + 5, 2);
-                msl::string::memcpy(&id, recvBuff + 7, 1);
-
-                wii::os::OSReport("[netmemaccess] magic, index, id: %s, %d, %d\n", magic, index, id);
-
-                if (!RecvAll(connfd, recvBuff + 2, 2)) {
-                    connected = false;
-                    break;
                 }
 
                 // Execute command; write response payload into sendScratch+4
@@ -389,7 +355,7 @@ namespace NetMemoryAccess {
                 if (outSize > (BUFSIZE - 4)) outSize = (BUFSIZE - 4);
 
                 // enqueue response (sender thread will actually write it)
-                enqueuePacket(sendScratch + 4, (u16)outSize);
+                enqueuePacket(cmdId, sendScratch + 4, (u16)outSize);
             }
 
             wii::os::OSReport("Client disconnected..\n");
@@ -409,7 +375,6 @@ namespace NetMemoryAccess {
     {
         InitQueueMutexOnce();
         InitConnMutexOnce();
-        //InitAckMutexOnce();
 
         u8* sendSp = Align32(gSendStack + STACK_SIZE);
         u8* recvSp = Align32(stack      + STACK_SIZE);
